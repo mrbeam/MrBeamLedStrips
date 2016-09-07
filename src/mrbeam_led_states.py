@@ -110,7 +110,7 @@ def progress(value, frame, color_done=WHITE, color_drip=BLUE):
 		for i in range(l):
 			
 			bottom_up_idx = l-i-1
-			threshold = value / 100.0 * l
+			threshold = value / 100.0 * (l-1)
 			if threshold < bottom_up_idx: 
 				if i == c:
 					strip.setPixelColor(r[i], color_drip)
@@ -136,7 +136,7 @@ def progress_pause(value, frame, color_done=WHITE, color_drip=BLUE):
 		for i in range(l):
 			
 			bottom_up_idx = l-i-1
-			threshold = value / 100.0 * l
+			threshold = value / 100.0 * (l-1)
 			if threshold < bottom_up_idx: 
 				if i == bottom_up_idx / 2:
 					color = dim_color(color_drip, dim)
