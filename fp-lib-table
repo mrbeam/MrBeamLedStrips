@@ -1,3 +1,0 @@
-(fp_lib_table
-  (lib (name PLCC4-5050)(type Legacy)(uri "$(KIPRJMOD)/PLCC4-5050.mod")(options "")(descr ""))
-)
