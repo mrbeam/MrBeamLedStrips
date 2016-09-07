@@ -1,13 +1,15 @@
 # Library to visualize the Mr Beam Machine States with the SK6812 LEDs
 # Author: Teja Philipp (teja@mr-beam.org)
-#
-# Inspired by the Arduino NeoPixel library.
+# based on https://github.com/jgarff/rpi_ws281x
 
 import time
 import signal
 import sys
 from neopixel import *
 
+import socket
+import os, os.path
+import time
 
 # LED strip configuration:
 LED_COUNT      = 36      # Number of LED pixels.
@@ -19,7 +21,7 @@ LED_INVERT     = False   # True to invert the signal (when using NPN transistor 
 LED_CHANNEL    = 0
 LED_STRIP      = ws.SK6812_STRIP # alternatives: ws.SK6812_STRIP_RGBW, ws.SK6812W_STRIP
 
-STATE_FILE = "/tmp/mrbeam.state"
+SOCKET = "/var/run/mrbeam_state.sock"
 
 # Serial numbering of LEDs on the Mr Beam modules
 # order is top -> down
@@ -46,6 +48,17 @@ def clean_exit(signal, frame):
 		strip.setPixelColor(i, OFF)
 		strip.show()
 	sys.exit(0)
+ 
+def off():
+	for i in range(256,0,-16):
+		strip.setBrightness(i-1);
+		#strip.show()
+		time.sleep(20/1000.0)
+		
+	for i in range(strip.numPixels()):
+		strip.setPixelColor(i, OFF)
+		strip.show()
+
  
 
 # pulsing red from the center
@@ -198,7 +211,6 @@ def job_finished(frame):
 	strip.show()
 
 
-
 def illuminate(color = WHITE):
 	leds = LEDS_IN_RIGHT + LEDS_IN_LEFT
 	l = len(leds)
@@ -211,64 +223,6 @@ def dim_color(col, brightness):
 	g = (col & 0x00FF00) >> 8;
 	b = (col & 0x0000FF);
 	return Color(int(r*brightness), int(g*brightness), int(b*brightness))
-
-
-# Define functions which animate LEDs in various ways.
-def colorWipe(strip, color, wait_ms=50):
-	"""Wipe color across display a pixel at a time."""
-	for i in range(strip.numPixels()):
-		strip.setPixelColor(i, color)
-		strip.show()
-		time.sleep(wait_ms/1000.0)
-
-def theaterChase(strip, color, wait_ms=50, iterations=10):
-	"""Movie theater light style chaser animation."""
-	for j in range(iterations):
-		for q in range(3):
-			for i in range(0, strip.numPixels(), 3):
-				strip.setPixelColor(i+q, color)
-			strip.show()
-			time.sleep(wait_ms/1000.0)
-			for i in range(0, strip.numPixels(), 3):
-				strip.setPixelColor(i+q, 0)
-
-def wheel(pos):
-	"""Generate rainbow colors across 0-255 positions."""
-	if pos < 85:
-		return Color(pos * 3, 255 - pos * 3, 0)
-	elif pos < 170:
-		pos -= 85
-		return Color(255 - pos * 3, 0, pos * 3)
-	else:
-		pos -= 170
-		return Color(0, pos * 3, 255 - pos * 3)
-
-def rainbow(strip, wait_ms=20, iterations=1):
-	"""Draw rainbow that fades across all pixels at once."""
-	for j in range(256*iterations):
-		for i in range(strip.numPixels()):
-			strip.setPixelColor(i, wheel((i+j) & 255))
-		strip.show()
-		time.sleep(wait_ms/1000.0)
-
-def rainbowCycle(strip, wait_ms=20, iterations=5):
-	"""Draw rainbow that uniformly distributes itself across all pixels."""
-	for j in range(256*iterations):
-		for i in range(strip.numPixels()):
-			strip.setPixelColor(i, wheel(((i * 256 / strip.numPixels()) + j) & 255))
-		strip.show()
-		time.sleep(wait_ms/1000.0)
-
-def theaterChaseRainbow(strip, wait_ms=50):
-	"""Rainbow movie theater light style chaser animation."""
-	for j in range(256):
-		for q in range(3):
-			for i in range(0, strip.numPixels(), 3):
-				strip.setPixelColor(i+q, wheel((i+j) % 255))
-			strip.show()
-			time.sleep(wait_ms/1000.0)
-			for i in range(0, strip.numPixels(), 3):
-				strip.setPixelColor(i+q, 0)
 
 
 def demo_state(frame):
@@ -290,19 +244,39 @@ def demo_state(frame):
 if __name__ == '__main__':
 	# Create NeoPixel object with appropriate configuration.
 	strip = Adafruit_NeoPixel(LED_COUNT, GPIO_PIN, LED_FREQ_HZ, LED_DMA, LED_INVERT, LED_BRIGHTNESS, LED_CHANNEL, LED_STRIP)
-	# Intialize the library (must be called once before other functions).
-	strip.begin()
+	strip.begin() # Init the LED-strip
+	signal.signal(signal.SIGTERM, clean_exit) # switch off the LEDs on exit
 
-	signal.signal(signal.SIGTERM, clean_exit)
 
+
+	if os.path.exists( SOCKET ):
+	  os.remove( SOCKET )
+
+	print "Opening socket..."
+
+	server = socket.socket( socket.AF_UNIX, socket.SOCK_STREAM )
+	server.bind(SOCKET)
+	server.listen(5)
+
+	print "Listening..."
 	print ('Press Ctrl-C to quit.')
 	try:
 		frame = 0
+		pause(frame)
 		while True:
-			frame += 1
-			
+			conn, addr = server.accept()
+		print 'accepted connection'
+
+		while True:
 			# read state
-			s = demo_state(frame).split(':')
+			data = conn.recv( 1024 )
+			
+			if not data:
+				state_string = demo_state(frame)
+			else:
+				state_string = data
+			
+			s = state_string.split(':')
 			state = s[0]
 			param = int(s[1]) if len(s) > 1 else 0
 			
@@ -314,33 +288,20 @@ if __name__ == '__main__':
 				job_finished(frame)
 			elif(state == "pause"):
 				progress_pause(param, frame)
+			elif(state == "off"):
+				off()
+			elif(state == "quit"):
+				break
 			else:
 				idle(frame)
 				
-				
-				
-#			# Color wipe animations.
-#			colorWipe(strip, Color(255, 0, 0))  # Red wipe
-#			colorWipe(strip, Color(0, 255, 0))  # Blue wipe
-#			colorWipe(strip, Color(0, 0, 255))  # Green wipe
-#			colorWipe(strip, Color(255, 255, 255))  # Composite White wipe
-
-#			# Theater chase animations.
-#			theaterChase(strip, Color(127, 0, 0))  # Red theater chase
-#			theaterChase(strip, Color(0, 127, 0))  # Green theater chase
-#			theaterChase(strip, Color(0, 0, 127))  # Blue theater chase
-#			theaterChase(strip, Color(0, 0, 0, 127))  # White theater chase
-#			theaterChase(strip, Color(127, 127, 127, 0))  # Composite White theater chase
-#			theaterChase(strip, Color(127, 127, 127, 127))  # Composite White + White theater chase
-#			# Rainbow animations.
-#			rainbow(strip)
-#			rainbowCycle(strip)
-#			theaterChaseRainbow(strip)
-
-			
+			frame += 1
 			time.sleep(20/1000.0)
 			
 	except KeyboardInterrupt:
 		clean_exit(signal.SIGTERM, None)
+		server.close()
+		os.remove( SOCKET )
+
 		print "Good bye"
 
