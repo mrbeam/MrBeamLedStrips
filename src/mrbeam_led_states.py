@@ -1,29 +1,27 @@
-# NeoPixel library strandtest example
-# Author: Tony DiCola (tony@tonydicola.com)
+# Library to visualize the Mr Beam Machine States with the SK6812 LEDs
+# Author: Teja Philipp (teja@mr-beam.org)
 #
-# Direct port of the Arduino NeoPixel library strandtest example.  Showcases
-# various animations on a strip of NeoPixels.
+# Inspired by the Arduino NeoPixel library.
+
 import time
 import signal
 import sys
-
 from neopixel import *
 
 
 # LED strip configuration:
 LED_COUNT      = 36      # Number of LED pixels.
-LED_PIN        = 18      # GPIO pin connected to the pixels (must support PWM!).
-LED_FREQ_HZ    = 800000  # LED signal frequency in hertz (usually 800khz)
+GPIO_PIN        = 18      # Pin #12 on the RPi. GPIO pin must support PWM
+LED_FREQ_HZ    = 800000  # LED signal frequency in Hz (usually 800kHz)
 LED_DMA        = 5       # DMA channel to use for generating signal (try 5)
-LED_BRIGHTNESS = 255     # Set to 0 for darkest and 255 for brightest
+LED_BRIGHTNESS = 255     # 0..255 / Dim if too much power is used.
 LED_INVERT     = False   # True to invert the signal (when using NPN transistor level shift)
 LED_CHANNEL    = 0
-LED_STRIP      = ws.SK6812_STRIP	
-#LED_STRIP      = ws.SK6812_STRIP_RGBW	
-#LED_STRIP      = ws.SK6812W_STRIP
+LED_STRIP      = ws.SK6812_STRIP # alternatives: ws.SK6812_STRIP_RGBW, ws.SK6812W_STRIP
 
 STATE_FILE = "/tmp/mrbeam.state"
 
+# Serial numbering of LEDs on the Mr Beam modules
 # order is top -> down
 LEDS_RIGHT_BACK = [0,1,2,3,4,5,6]
 LEDS_RIGHT_FRONT = [7,8,9,10,11,12,13]
@@ -34,7 +32,13 @@ LEDS_LEFT_BACK = [29,30,31,32,33,34,35]
 LEDS_IN_RIGHT = [14,15,16,17]
 LEDS_IN_LEFT = [18,19,20,21]
 
+# color definitions
 OFF = Color(0,0,0)
+WHITE = Color(255,255,255)
+RED = Color(255,0,0)
+GREEN = Color(0,255,0)
+BLUE = Color(0,0,255)
+YELLOW = Color(255,200,0)
  
 def clean_exit(signal, frame):
 	print 'shutting down'
@@ -48,7 +52,6 @@ def clean_exit(signal, frame):
 def warning(frame):
 	involved_registers = [LEDS_RIGHT_FRONT,LEDS_LEFT_FRONT,LEDS_RIGHT_BACK,LEDS_LEFT_BACK];
 	l = len(LEDS_RIGHT_BACK)
-	red = Color(255,0,0)
 	fwd_bwd_range = range(l) + range(l-1,-1,-1)
 	
 	frames = [
@@ -68,7 +71,7 @@ def warning(frame):
 	for r in involved_registers:
 		for i in range(l):
 			if(frames[f][i] >= 1):
-				strip.setPixelColor(r[i], red)
+				strip.setPixelColor(r[i], RED)
 			else:
 				strip.setPixelColor(r[i], OFF)
 	strip.show()
@@ -78,7 +81,6 @@ def warning(frame):
 def pause(frame):
 	involved_registers = [LEDS_RIGHT_FRONT,LEDS_LEFT_FRONT,LEDS_RIGHT_BACK,LEDS_LEFT_BACK];
 	l = len(LEDS_RIGHT_BACK)
-	yellow = Color(255,200,0)
 	fwd_bwd_range = range(l) + range(l-1,-1,-1)
 	
 	frames = [
@@ -91,14 +93,14 @@ def pause(frame):
 	for r in involved_registers:
 		for i in range(l):
 			if(frames[f][i] >= 1):
-				strip.setPixelColor(r[i], yellow)
+				strip.setPixelColor(r[i], YELLOW)
 			else:
 				strip.setPixelColor(r[i], OFF)
 	strip.show()
 
 
 
-def progress(value, frame, color_done=Color(255,255,255), color_drip=Color(0,0,255)):
+def progress(value, frame, color_done=WHITE, color_drip=BLUE):
 	involved_registers = [LEDS_RIGHT_FRONT,LEDS_LEFT_FRONT,LEDS_RIGHT_BACK,LEDS_LEFT_BACK];
 	l = len(LEDS_RIGHT_BACK)
 	c = frame/5 % l
@@ -123,7 +125,7 @@ def progress(value, frame, color_done=Color(255,255,255), color_drip=Color(0,0,2
 
 
 # pauses the progress animation with a pulsing drip
-def progress_pause(value, frame, color_done=Color(255,255,255), color_drip=Color(0,0,255)):
+def progress_pause(value, frame, color_done=WHITE, color_drip=BLUE):
 	involved_registers = [LEDS_RIGHT_FRONT,LEDS_LEFT_FRONT,LEDS_RIGHT_BACK,LEDS_LEFT_BACK];
 	l = len(LEDS_RIGHT_BACK)
 	f_count = 64.0
@@ -148,7 +150,7 @@ def progress_pause(value, frame, color_done=Color(255,255,255), color_drip=Color
 	strip.show()
 
 
-def drip(counter, color=Color(0,0,255)):
+def drip(counter, color=BLUE):
 	involved_registers = [LEDS_RIGHT_FRONT,LEDS_LEFT_FRONT,LEDS_RIGHT_BACK,LEDS_LEFT_BACK];
 	l = len(LEDS_RIGHT_BACK)
 	c = counter % l
@@ -163,7 +165,7 @@ def drip(counter, color=Color(0,0,255)):
 	strip.show()
 
 
-def idle(frame, color=Color(255,255,255)):
+def idle(frame, color=WHITE):
 	leds = LEDS_RIGHT_BACK + list(reversed(LEDS_RIGHT_FRONT)) + LEDS_IN_RIGHT + LEDS_IN_LEFT + LEDS_LEFT_FRONT + list(reversed(LEDS_LEFT_BACK));
 	c = frame % len(leds)
 	for i in range(len(leds)):
@@ -177,20 +179,19 @@ def job_finished(frame):
 	illuminate()
 	involved_registers = [LEDS_RIGHT_FRONT,LEDS_LEFT_FRONT,LEDS_RIGHT_BACK,LEDS_LEFT_BACK];
 	l = len(LEDS_RIGHT_BACK)
-	green = Color(0,255,0)
 	
 	f = frame % (100 + l*2)	
 		
 	if(f < l*2):
 		for i in range(f/2-1,-1,-1):
 			for r in involved_registers:
-				strip.setPixelColor(r[i], green)
+				strip.setPixelColor(r[i], GREEN)
 		
 	else:
 		for i in range(l-1,-1,-1):
 			for r in involved_registers:
 				brightness = 1 - (f - 2*l)/100.0
-				col = dim_color(green, brightness)
+				col = dim_color(GREEN, brightness)
 				strip.setPixelColor(r[i], col)
 		
 			
@@ -198,7 +199,7 @@ def job_finished(frame):
 
 
 
-def illuminate(color=Color(255,255,255)):
+def illuminate(color = WHITE):
 	leds = LEDS_IN_RIGHT + LEDS_IN_LEFT
 	l = len(leds)
 	for i in range(l):
@@ -288,7 +289,7 @@ def demo_state(frame):
 # Main program logic follows:
 if __name__ == '__main__':
 	# Create NeoPixel object with appropriate configuration.
-	strip = Adafruit_NeoPixel(LED_COUNT, LED_PIN, LED_FREQ_HZ, LED_DMA, LED_INVERT, LED_BRIGHTNESS, LED_CHANNEL, LED_STRIP)
+	strip = Adafruit_NeoPixel(LED_COUNT, GPIO_PIN, LED_FREQ_HZ, LED_DMA, LED_INVERT, LED_BRIGHTNESS, LED_CHANNEL, LED_STRIP)
 	# Intialize the library (must be called once before other functions).
 	strip.begin()
 
