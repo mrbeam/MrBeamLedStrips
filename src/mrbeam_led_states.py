@@ -4,14 +4,10 @@
 
 import time
 import signal
-import sys
 from neopixel import *
-
-import socket
-import os, os.path
 import time
+import sys
 
-# LED strip configuration:
 LED_COUNT      = 36      # Number of LED pixels.
 GPIO_PIN        = 18      # Pin #12 on the RPi. GPIO pin must support PWM
 LED_FREQ_HZ    = 800000  # LED signal frequency in Hz (usually 800kHz)
@@ -21,8 +17,7 @@ LED_INVERT     = False   # True to invert the signal (when using NPN transistor 
 LED_CHANNEL    = 0
 LED_STRIP      = ws.SK6812_STRIP # alternatives: ws.SK6812_STRIP_RGBW, ws.SK6812W_STRIP
 
-SOCKET = "/var/run/mrbeam_state.sock"
-
+# LED strip configuration:
 # Serial numbering of LEDs on the Mr Beam modules
 # order is top -> down
 LEDS_RIGHT_BACK = [0,1,2,3,4,5,6]
@@ -41,267 +36,314 @@ RED = Color(255,0,0)
 GREEN = Color(0,255,0)
 BLUE = Color(0,0,255)
 YELLOW = Color(255,200,0)
- 
-def clean_exit(signal, frame):
-	print 'shutting down'
-	for i in range(strip.numPixels()):
-		strip.setPixelColor(i, OFF)
-		strip.show()
-	sys.exit(0)
- 
-def off():
-	for i in range(256,0,-16):
-		strip.setBrightness(i-1);
-		#strip.show()
-		time.sleep(20/1000.0)
+ORANGE = Color(226,83,3)
+
+class LEDs():
+
+	def __init__(self):
+		# Create NeoPixel object with appropriate configuration.
+		self.strip = Adafruit_NeoPixel(LED_COUNT, GPIO_PIN, LED_FREQ_HZ, LED_DMA, LED_INVERT, LED_BRIGHTNESS, LED_CHANNEL, LED_STRIP)
+		self.strip.begin() # Init the LED-strip
+		self.state = None
+		signal.signal(signal.SIGTERM, self.clean_exit) # switch off the LEDs on exit
+		self.job_progress = 0
 		
-	for i in range(strip.numPixels()):
-		strip.setPixelColor(i, OFF)
-		strip.show()
+	def change_state(self, state):
+		print("state change" + str(self.state) + " => " + str(state))
+		self.state = state
 
- 
+	def clean_exit(self, signal, msg):
+		print 'shutting down'
+		self.off()
+		sys.exit(0)
 
-# pulsing red from the center
-def warning(frame):
-	involved_registers = [LEDS_RIGHT_FRONT,LEDS_LEFT_FRONT,LEDS_RIGHT_BACK,LEDS_LEFT_BACK];
-	l = len(LEDS_RIGHT_BACK)
-	fwd_bwd_range = range(l) + range(l-1,-1,-1)
-	
-	frames = [
-		[0,0,0,0,0,0,0],
-		[0,0,0,1,0,0,0],
-		[0,0,1,1,1,0,0],
-		[0,1,1,1,1,1,0],
-		[1,1,1,1,1,1,1],
-		[1,1,1,1,1,1,1],
-		[0,1,1,1,1,1,0],
-		[0,0,1,1,1,0,0],
-		[0,0,0,1,0,0,0]
-	]
-	
-	f = frame % len(frames)
-	
-	for r in involved_registers:
-		for i in range(l):
-			if(frames[f][i] >= 1):
-				strip.setPixelColor(r[i], RED)
-			else:
-				strip.setPixelColor(r[i], OFF)
-	strip.show()
+	def off(self):
+		for i in range(self.strip.numPixels()):
+			self.strip.setPixelColor(i, OFF)
+		self.strip.show()
 
 
-# alternating upper and lower yellow 
-def pause(frame):
-	involved_registers = [LEDS_RIGHT_FRONT,LEDS_LEFT_FRONT,LEDS_RIGHT_BACK,LEDS_LEFT_BACK];
-	l = len(LEDS_RIGHT_BACK)
-	fwd_bwd_range = range(l) + range(l-1,-1,-1)
-	
-	frames = [
-		[1,1,1,0,0,0,0],
-		[0,0,0,0,1,1,1]
-	]
-	
-	f = frame/40 % len(frames)
-	
-	for r in involved_registers:
-		for i in range(l):
-			if(frames[f][i] >= 1):
-				strip.setPixelColor(r[i], YELLOW)
-			else:
-				strip.setPixelColor(r[i], OFF)
-	strip.show()
+	def fade_off(self, fps = 50):
+		for i in range(256,0,-16):
+			self.strip.setBrightness(i-1);
+			self.strip.show()
+			time.sleep(1.0/fps)
+
+		for i in range(self.strip.numPixels()):
+			self.strip.setPixelColor(i, OFF)
+			self.strip.show()
 
 
 
-def progress(value, frame, color_done=WHITE, color_drip=BLUE):
-	involved_registers = [LEDS_RIGHT_FRONT,LEDS_LEFT_FRONT,LEDS_RIGHT_BACK,LEDS_LEFT_BACK];
-	l = len(LEDS_RIGHT_BACK)
-	c = frame/5 % l
-	illuminate()
+	# pulsing red from the center
+	def error(self, frame):
+		self.flash(frame)
+		
+	def flash(self, frame, color=RED, fps = 50):
+		involved_registers = [LEDS_RIGHT_FRONT,LEDS_LEFT_FRONT,LEDS_RIGHT_BACK,LEDS_LEFT_BACK];
+		l = len(LEDS_RIGHT_BACK)
+		fwd_bwd_range = range(l) + range(l-1,-1,-1)
 
-	for r in involved_registers:
-		for i in range(l):
-			
-			bottom_up_idx = l-i-1
-			threshold = value / 100.0 * (l-1)
-			if threshold < bottom_up_idx: 
+		frames = [
+			[0,0,0,0,0,0,0],
+			[0,0,0,1,0,0,0],
+			[0,0,1,1,1,0,0],
+			[0,1,1,1,1,1,0],
+			[1,1,1,1,1,1,1],
+			[1,1,1,1,1,1,1],
+			[0,1,1,1,1,1,0],
+			[0,0,1,1,1,0,0],
+			[0,0,0,1,0,0,0]
+		]
+
+		div = 100/fps
+		f = frame/div % len(frames)
+
+		for r in involved_registers:
+			for i in range(l):
+				if(frames[f][i] >= 1):
+					self.strip.setPixelColor(r[i], color)
+				else:
+					self.strip.setPixelColor(r[i], OFF)
+		self.strip.show()
+
+
+	# alternating upper and lower yellow 
+	def warning(self, frame, fps = 2):
+		involved_registers = [LEDS_RIGHT_FRONT,LEDS_LEFT_FRONT,LEDS_RIGHT_BACK,LEDS_LEFT_BACK];
+		l = len(LEDS_RIGHT_BACK)
+		fwd_bwd_range = range(l) + range(l-1,-1,-1)
+
+		frames = [
+			[1,1,1,0,0,0,0],
+			[0,0,0,0,1,1,1]
+		]
+
+		div = 100/fps
+		f = frame/div % len(frames)
+
+		for r in involved_registers:
+			for i in range(l):
+				if(frames[f][i] >= 1):
+					self.strip.setPixelColor(r[i], YELLOW)
+				else:
+					self.strip.setPixelColor(r[i], OFF)
+		self.strip.show()
+
+
+
+	def progress(self, value, frame, color_done=WHITE, color_drip=BLUE, fps=20):
+		involved_registers = [LEDS_RIGHT_FRONT,LEDS_LEFT_FRONT,LEDS_RIGHT_BACK,LEDS_LEFT_BACK];
+		l = len(LEDS_RIGHT_BACK)
+		div = 100/fps
+		c = frame/div % l
+		
+		self.illuminate()
+
+		for r in involved_registers:
+			for i in range(l):
+
+				bottom_up_idx = l-i-1
+				threshold = value / 100.0 * (l-1)
+				if threshold < bottom_up_idx: 
+					if i == c:
+						self.strip.setPixelColor(r[i], color_drip)
+					else:
+						self.strip.setPixelColor(r[i], OFF)
+
+				else:
+					self.strip.setPixelColor(r[i], color_done)
+
+		self.strip.show()
+
+
+
+	# pauses the progress animation with a pulsing drip
+	def progress_pause(self, value, frame, color_done=WHITE, color_drip=BLUE, fps=50):
+		involved_registers = [LEDS_RIGHT_FRONT,LEDS_LEFT_FRONT,LEDS_RIGHT_BACK,LEDS_LEFT_BACK];
+		l = len(LEDS_RIGHT_BACK)
+		f_count = 64.0
+		div = 100/fps
+		dim = abs((frame/div % f_count*2) - (f_count-1))/f_count 
+		self.illuminate()
+
+		for r in involved_registers:
+			for i in range(l):
+				bottom_up_idx = l-i-1
+				threshold = value / 100.0 * (l-1)
+				if threshold < bottom_up_idx: 
+					if i == bottom_up_idx / 2:
+						color = self.dim_color(color_drip, dim)
+						self.strip.setPixelColor(r[i], color)
+					else:
+						self.strip.setPixelColor(r[i], OFF)
+
+				else:
+					self.strip.setPixelColor(r[i], color_done)
+
+		self.strip.show()
+
+
+	def drip(self, frame, color=BLUE, fps=50):
+		involved_registers = [LEDS_RIGHT_FRONT,LEDS_LEFT_FRONT,LEDS_RIGHT_BACK,LEDS_LEFT_BACK];
+		l = len(LEDS_RIGHT_BACK)
+		div = 100/fps
+		c = frame/div % l
+
+		for r in involved_registers:
+			for i in range(l):
 				if i == c:
-					strip.setPixelColor(r[i], color_drip)
+					self.strip.setPixelColor(r[i], color)
 				else:
-					strip.setPixelColor(r[i], OFF)
-					
+					self.strip.setPixelColor(r[i], OFF)
+
+		self.strip.show()
+
+
+	def idle(self, frame, color=WHITE, fps=50):
+		leds = LEDS_RIGHT_BACK + list(reversed(LEDS_RIGHT_FRONT)) + LEDS_IN_RIGHT + LEDS_IN_LEFT + LEDS_LEFT_FRONT + list(reversed(LEDS_LEFT_BACK));
+		div = 100/fps
+		c = frame/div % len(leds)
+		for i in range(len(leds)):
+			if(i == c):
+				self.strip.setPixelColor(leds[i], color)
 			else:
-				strip.setPixelColor(r[i], color_done)
+				self.strip.setPixelColor(leds[i], OFF)
+		self.strip.show()
 
-	strip.show()
+	def job_finished(self, frame, fps=50):
+		self.illuminate()
+		involved_registers = [LEDS_RIGHT_FRONT,LEDS_LEFT_FRONT,LEDS_RIGHT_BACK,LEDS_LEFT_BACK];
+		l = len(LEDS_RIGHT_BACK)
+		div = 100/fps
+		f = frame/div % (100 + l*2)	
 
+		if(f < l*2):
+			for i in range(f/2-1,-1,-1):
+				for r in involved_registers:
+					self.strip.setPixelColor(r[i], GREEN)
 
-
-# pauses the progress animation with a pulsing drip
-def progress_pause(value, frame, color_done=WHITE, color_drip=BLUE):
-	involved_registers = [LEDS_RIGHT_FRONT,LEDS_LEFT_FRONT,LEDS_RIGHT_BACK,LEDS_LEFT_BACK];
-	l = len(LEDS_RIGHT_BACK)
-	f_count = 64.0
-	dim = abs((frame % f_count*2) - (f_count-1))/f_count 
-	illuminate()
-
-	for r in involved_registers:
-		for i in range(l):
-			
-			bottom_up_idx = l-i-1
-			threshold = value / 100.0 * (l-1)
-			if threshold < bottom_up_idx: 
-				if i == bottom_up_idx / 2:
-					color = dim_color(color_drip, dim)
-					strip.setPixelColor(r[i], color)
-				else:
-					strip.setPixelColor(r[i], OFF)
-					
-			else:
-				strip.setPixelColor(r[i], color_done)
-
-	strip.show()
-
-
-def drip(counter, color=BLUE):
-	involved_registers = [LEDS_RIGHT_FRONT,LEDS_LEFT_FRONT,LEDS_RIGHT_BACK,LEDS_LEFT_BACK];
-	l = len(LEDS_RIGHT_BACK)
-	c = counter % l
-
-	for r in involved_registers:
-		for i in range(l):
-			if i == c:
-				strip.setPixelColor(r[i], color)
-			else:
-				strip.setPixelColor(r[i], OFF)
-
-	strip.show()
-
-
-def idle(frame, color=WHITE):
-	leds = LEDS_RIGHT_BACK + list(reversed(LEDS_RIGHT_FRONT)) + LEDS_IN_RIGHT + LEDS_IN_LEFT + LEDS_LEFT_FRONT + list(reversed(LEDS_LEFT_BACK));
-	c = frame % len(leds)
-	for i in range(len(leds)):
-		if(i == c):
-			strip.setPixelColor(leds[i], color)
 		else:
-			strip.setPixelColor(leds[i], OFF)
-	strip.show()
+			for i in range(l-1,-1,-1):
+				for r in involved_registers:
+					brightness = 1 - (f - 2*l)/100.0
+					col = self.dim_color(GREEN, brightness)
+					self.strip.setPixelColor(r[i], col)
 
-def job_finished(frame):
-	illuminate()
-	involved_registers = [LEDS_RIGHT_FRONT,LEDS_LEFT_FRONT,LEDS_RIGHT_BACK,LEDS_LEFT_BACK];
-	l = len(LEDS_RIGHT_BACK)
-	
-	f = frame % (100 + l*2)	
+		self.strip.show()
+
+
+	def illuminate(self, color = WHITE):
+		leds = LEDS_IN_RIGHT + LEDS_IN_LEFT
+		l = len(leds)
+		for i in range(l):
+			self.strip.setPixelColor(leds[i], color)		
+		self.strip.show()
+
+	def dim_color(self, col, brightness):
+		r = (col & 0xFF0000) >> 16;
+		g = (col & 0x00FF00) >> 8;
+		b = (col & 0x0000FF);
+		return Color(int(r*brightness), int(g*brightness), int(b*brightness))
+
+
+	def demo_state(self, frame):
+		f = frame % 4300
+		if(f < 1000):
+			return "idle"
+		elif(f < 2000):
+			return "progress:" + str((f-1000)/20)
+		elif(f < 2200):
+			return "pause:50"
+		elif(f < 3200):
+			return "progress:"+ str((f-1200)/20)
+		elif(f < 4000):
+			return "job_finished"
+		else:
+			return "warning"
+
 		
-	if(f < l*2):
-		for i in range(f/2-1,-1,-1):
-			for r in involved_registers:
-				strip.setPixelColor(r[i], GREEN)
-		
-	else:
-		for i in range(l-1,-1,-1):
-			for r in involved_registers:
-				brightness = 1 - (f - 2*l)/100.0
-				col = dim_color(GREEN, brightness)
-				strip.setPixelColor(r[i], col)
-		
-			
-	strip.show()
+	def loop(self):
 
+		try:
+			frame = 0
+			while True:
+				data = self.state
+				if not data:
+					state_string = "off" #self.demo_state(frame)
+				else:
+					state_string = data
 
-def illuminate(color = WHITE):
-	leds = LEDS_IN_RIGHT + LEDS_IN_LEFT
-	l = len(leds)
-	for i in range(l):
-		strip.setPixelColor(leds[i], color)		
-	strip.show()
+				# split params from state string
+				s = state_string.split(':')
+				state = s[0]
+				param = int(s[1]) if len(s) > 1 else 0
 
-def dim_color(col, brightness):
-	r = (col & 0xFF0000) >> 16;
-	g = (col & 0x00FF00) >> 8;
-	b = (col & 0x0000FF);
-	return Color(int(r*brightness), int(g*brightness), int(b*brightness))
-
-
-def demo_state(frame):
-	f = frame % 4300
-	if(f < 1000):
-		return "idle"
-	elif(f < 2000):
-		return "progress:" + str((f-1000)/20)
-	elif(f < 2200):
-		return "pause:50"
-	elif(f < 3200):
-		return "progress:"+ str((f-1200)/20)
-	elif(f < 4000):
-		return "job_finished"
-	else:
-		return "warning"
-		
-# Main program logic follows:
-if __name__ == '__main__':
-	# Create NeoPixel object with appropriate configuration.
-	strip = Adafruit_NeoPixel(LED_COUNT, GPIO_PIN, LED_FREQ_HZ, LED_DMA, LED_INVERT, LED_BRIGHTNESS, LED_CHANNEL, LED_STRIP)
-	strip.begin() # Init the LED-strip
-	signal.signal(signal.SIGTERM, clean_exit) # switch off the LEDs on exit
-
-
-
-	if os.path.exists( SOCKET ):
-	  os.remove( SOCKET )
-
-	print "Opening socket..."
-
-	server = socket.socket( socket.AF_UNIX, socket.SOCK_STREAM )
-	server.bind(SOCKET)
-	server.listen(5)
-
-	print "Listening..."
-	print ('Press Ctrl-C to quit.')
-	try:
-		frame = 0
-		pause(frame)
-		while True:
-			conn, addr = server.accept()
-		print 'accepted connection'
-
-		while True:
-			# read state
-			data = conn.recv( 1024 )
-			
-			if not data:
-				state_string = demo_state(frame)
-			else:
-				state_string = data
-			
-			s = state_string.split(':')
-			state = s[0]
-			param = int(s[1]) if len(s) > 1 else 0
-			
-			if(state == "warning"):
-				warning(frame);
-			elif(state == "progress"):
-				progress(param, frame)
-			elif(state == "job_finished"):
-				job_finished(frame)
-			elif(state == "pause"):
-				progress_pause(param, frame)
-			elif(state == "off"):
-				off()
-			elif(state == "quit"):
-				break
-			else:
-				idle(frame)
+				# Server
+				if(state == "Startup"):
+					self.idle(frame, color=Color(20,20,20), fps=10);
+				elif(state == "ClientOpened"):
+					self.idle(frame, fps=80);
+				elif(state == "ClientClosed"):
+					self.idle(frame, color=Color(20,20,20), fps=10);
+				# Machine
+				elif(state == "Connected"):
+					self.idle(frame);
+				elif(state == "Disconnected"):
+					self.idle(frame, speed=10);
+				elif(state == "Error"):
+					self.warning(frame);
 				
-			frame += 1
-			time.sleep(20/1000.0)
-			
-	except KeyboardInterrupt:
-		clean_exit(signal.SIGTERM, None)
-		server.close()
-		os.remove( SOCKET )
+				# File Handling	
+				elif(state == "Upload"):
+					self.warning(frame);
+					
+				# Laser Job
+				elif(state == "PrintStarted"):
+					self.progress(0, frame)
+				elif(state == "PrintDone"):
+					self.job_progress = 0
+					self.job_finished(frame)
+				elif(state == "PrintCancelled"):
+					self.job_progress = 0
+					self.fade_off()
+				elif(state == "PrintPaused"):
+					self.progress_pause(self.job_progress, frame)
+				elif(state == "PrintResumed"):
+					self.progress(self.job_progress, frame)
+				elif(state == "progress"):
+					self.job_progress = param
+					self.progress(param, frame)
+					
+				# Slicing	
+				elif(state == "SlicingStarted"):
+					self.progress(param, frame, color_done=BLUE, color_drip=WHITE)
+				elif(state == "SlicingDone"):
+					self.progress(param, frame, color_done=BLUE, color_drip=WHITE)
+				elif(state == "SlicingCancelled"):
+					self.idle()
+				elif(state == "SlicingFailed"):
+					self.fade_off()
+					
+				# Settings	
+				elif(state == "SettingsUpdated"):
+					self.flash(frame, color=WHITE)
+				elif(state == "slicing"):
+					self.progress(param, frame, color_done=BLUE, color_drip=WHITE)
+				elif(state == "job_finished"):
+					self.job_finished(frame)
+				elif(state == "pause"):
+					self.progress_pause(param, frame)
+				elif(state == "off"):
+					self.off()
+				elif(state == "quit"):
+					break
+				else:
+					self.idle(frame, color=Color(20,20,20), fps=10)
 
-		print "Good bye"
+				frame += 1
+				time.sleep(10/1000.0)
+
+		except KeyboardInterrupt:
+			self.clean_exit(signal.SIGTERM, None)
 
