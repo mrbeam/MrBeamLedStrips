@@ -47,6 +47,7 @@ class LEDs():
 		self.state = None
 		signal.signal(signal.SIGTERM, self.clean_exit) # switch off the LEDs on exit
 		self.job_progress = 0
+		self.brightness = 255
 		
 	def change_state(self, state):
 		print("state change" + str(self.state) + " => " + str(state))
@@ -64,8 +65,8 @@ class LEDs():
 
 
 	def fade_off(self, fps = 50):
-		for i in range(256,0,-16):
-			self.strip.setBrightness(i-1);
+		for i in range(self.brightness,-1,-1):
+			self.strip.setBrightness(i);
 			self.strip.show()
 			time.sleep(1.0/fps)
 
@@ -105,6 +106,7 @@ class LEDs():
 					self.strip.setPixelColor(r[i], color)
 				else:
 					self.strip.setPixelColor(r[i], OFF)
+		self.strip.setBrightness(self.brightness);
 		self.strip.show()
 
 
@@ -128,6 +130,7 @@ class LEDs():
 					self.strip.setPixelColor(r[i], YELLOW)
 				else:
 					self.strip.setPixelColor(r[i], OFF)
+		self.strip.setBrightness(self.brightness);
 		self.strip.show()
 
 
@@ -153,7 +156,8 @@ class LEDs():
 
 				else:
 					self.strip.setPixelColor(r[i], color_done)
-
+					
+		self.strip.setBrightness(self.brightness);
 		self.strip.show()
 
 
@@ -181,6 +185,7 @@ class LEDs():
 				else:
 					self.strip.setPixelColor(r[i], color_done)
 
+		self.strip.setBrightness(self.brightness);
 		self.strip.show()
 
 
@@ -197,6 +202,7 @@ class LEDs():
 				else:
 					self.strip.setPixelColor(r[i], OFF)
 
+		self.strip.setBrightness(self.brightness);
 		self.strip.show()
 
 
@@ -209,6 +215,8 @@ class LEDs():
 				self.strip.setPixelColor(leds[i], color)
 			else:
 				self.strip.setPixelColor(leds[i], OFF)
+
+		self.strip.setBrightness(self.brightness);
 		self.strip.show()
 
 	def job_finished(self, frame, fps=50):
@@ -230,6 +238,7 @@ class LEDs():
 					col = self.dim_color(GREEN, brightness)
 					self.strip.setPixelColor(r[i], col)
 
+		self.strip.setBrightness(self.brightness);
 		self.strip.show()
 
 
@@ -238,6 +247,8 @@ class LEDs():
 		l = len(leds)
 		for i in range(l):
 			self.strip.setPixelColor(leds[i], color)		
+
+		self.strip.setBrightness(self.brightness);
 		self.strip.show()
 
 	def dim_color(self, col, brightness):
@@ -283,16 +294,16 @@ class LEDs():
 				if(state == "Startup"):
 					self.idle(frame, color=Color(20,20,20), fps=10);
 				elif(state == "ClientOpened"):
-					self.idle(frame, fps=80);
+					self.idle(frame, fps=60);
 				elif(state == "ClientClosed"):
 					self.idle(frame, color=Color(20,20,20), fps=10);
 				# Machine
 				elif(state == "Connected"):
 					self.idle(frame);
 				elif(state == "Disconnected"):
-					self.idle(frame, speed=10);
+					self.idle(frame, fps=10);
 				elif(state == "Error"):
-					self.warning(frame);
+					self.error(frame);
 				
 				# File Handling	
 				elif(state == "Upload"):
@@ -314,6 +325,10 @@ class LEDs():
 				elif(state == "progress"):
 					self.job_progress = param
 					self.progress(param, frame)
+				elif(state == "job_finished"):
+					self.job_finished(frame)
+				elif(state == "pause"):
+					self.progress_pause(param, frame)
 					
 				# Slicing	
 				elif(state == "SlicingStarted"):
@@ -321,23 +336,25 @@ class LEDs():
 				elif(state == "SlicingDone"):
 					self.progress(param, frame, color_done=BLUE, color_drip=WHITE)
 				elif(state == "SlicingCancelled"):
-					self.idle()
+					self.idle(frame)
 				elif(state == "SlicingFailed"):
 					self.fade_off()
+				elif(state == "SlicingProgress"):
+					self.progress(param, frame, color_done=BLUE, color_drip=WHITE)
 					
 				# Settings	
 				elif(state == "SettingsUpdated"):
 					self.flash(frame, color=WHITE)
-				elif(state == "slicing"):
-					self.progress(param, frame, color_done=BLUE, color_drip=WHITE)
-				elif(state == "job_finished"):
-					self.job_finished(frame)
-				elif(state == "pause"):
-					self.progress_pause(param, frame)
+					
+				# other
 				elif(state == "off"):
 					self.off()
-				elif(state == "quit"):
-					break
+				elif(state == "brightness"):
+					if(param > 255):
+						param = 255
+					elif param < 0:
+						param = 0
+					self.brightness = param
 				else:
 					self.idle(frame, color=Color(20,20,20), fps=10)
 
