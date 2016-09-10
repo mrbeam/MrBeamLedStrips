@@ -203,23 +203,6 @@ def server():
 		daemon.start()
 
 
-def client():
-	import socket
-	import sys
-	state = sys.argv[1]
-
-	socket_file = "/var/run/mrbeam_state.sock"
-	s = None # socket object
-
-	s = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
-	s.connect(socket_file)
-
-	s.send(state+'\x00')
-	print("send: " + state)
-	data = s.recv(1024)
-	print("recv: " + data)
-	s.close()
-
 if __name__ == '__main__':
 	server()
 
