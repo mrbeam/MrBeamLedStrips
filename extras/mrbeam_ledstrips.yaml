@@ -1,4 +1,4 @@
 # control socket to listen on
 socket: /var/run/mrbeam_ledstrips.sock
-logfile: /var/log/mrbeam_ledstrips.log
+
 

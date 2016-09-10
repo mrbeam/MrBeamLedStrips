@@ -119,13 +119,13 @@ def server():
 	parser = argparse.ArgumentParser(parents=[])
 
 
-	parser.add_argument("-c", "--config", default="/etc/ledstrips.yaml", help="Config file location")
+	parser.add_argument("-c", "--config", default="/etc/mrbeam_ledstrips.yaml", help="Config file location")
 	parser.add_argument("-f", "--foreground", action="store_true", help="Run in foreground instead of as daemon")
-	parser.add_argument("-p", "--pid", default="/var/run/ledstrips.pid", help="Pidfile to use for demonizing, defaults to /var/run/ledstrips.pid")
+	parser.add_argument("-p", "--pid", default="/var/run/mrbeam_ledstrips.pid", help="Pidfile to use for demonizing, defaults to /var/run/ledstrips.pid")
 	parser.add_argument("-d", "--debug", action="store_true", help="Enable debug logging")
 	parser.add_argument("-q", "--quiet", action="store_true", help="Disable console output")
 	parser.add_argument("-v", "--version", action="store_true", help="Display version information and exit")
-	parser.add_argument("--logfile", default="/var/log/ledstrips.log", help="Location of logfile, defaults to /var/log/ledstrips.log")
+	parser.add_argument("--logfile", default="/var/log/mrbeam_ledstrips.log", help="Location of logfile, defaults to /var/log/ledstrips.log")
 	parser.add_argument("--daemon", choices=["stop", "status"], help="Control the ledstrips daemon, supported arguments are 'stop' and 'status'.")
 
 	args = parser.parse_args()
@@ -167,13 +167,13 @@ def server():
 		console_handler.level = logging.DEBUG if args.debug else logging.INFO
 		logging.getLogger('').addHandler(console_handler)
 
-	default_config = dict(socket='/var/run/mrbeam_state.sock')
+	default_config = dict(socket='/var/run/mrbeam_ledstrips.sock')
 	import copy
 	config = copy.deepcopy(default_config)
 
 	configfile = args.config
 	if not configfile:
-		configfile = "/etc/ledstrips.yaml"
+		configfile = "/etc/mrbeam_ledstrips.yaml"
 
 	import os
 	if os.path.exists(configfile):

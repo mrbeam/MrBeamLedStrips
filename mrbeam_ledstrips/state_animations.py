@@ -44,7 +44,7 @@ class LEDs():
 		# Create NeoPixel object with appropriate configuration.
 		self.strip = Adafruit_NeoPixel(LED_COUNT, GPIO_PIN, LED_FREQ_HZ, LED_DMA, LED_INVERT, LED_BRIGHTNESS, LED_CHANNEL, LED_STRIP)
 		self.strip.begin() # Init the LED-strip
-		self.state = None
+		self.state = "_listening"
 		signal.signal(signal.SIGTERM, self.clean_exit) # switch off the LEDs on exit
 		self.job_progress = 0
 		self.brightness = 255
@@ -83,7 +83,6 @@ class LEDs():
 	def flash(self, frame, color=RED, fps = 50):
 		involved_registers = [LEDS_RIGHT_FRONT,LEDS_LEFT_FRONT,LEDS_RIGHT_BACK,LEDS_LEFT_BACK];
 		l = len(LEDS_RIGHT_BACK)
-		fwd_bwd_range = range(l) + range(l-1,-1,-1)
 
 		frames = [
 			[0,0,0,0,0,0,0],
@@ -103,6 +102,24 @@ class LEDs():
 		for r in involved_registers:
 			for i in range(l):
 				if(frames[f][i] >= 1):
+					self.strip.setPixelColor(r[i], color)
+				else:
+					self.strip.setPixelColor(r[i], OFF)
+		self.strip.setBrightness(self.brightness);
+		self.strip.show()
+
+	def listening(self, frame, fps = 50):
+		involved_registers = [LEDS_RIGHT_FRONT,LEDS_LEFT_FRONT,LEDS_RIGHT_BACK,LEDS_LEFT_BACK];
+		l = len(LEDS_RIGHT_BACK)
+
+		div = 100/fps
+		f_count = 64.0
+		dim = abs((frame/div % f_count*2) - (f_count-1))/f_count 
+
+		color = self.dim_color(ORANGE, dim)
+		for r in involved_registers:
+			for i in range(l):
+				if(i == l-1):
 					self.strip.setPixelColor(r[i], color)
 				else:
 					self.strip.setPixelColor(r[i], OFF)
@@ -290,24 +307,29 @@ class LEDs():
 				state = s[0]
 				param = int(s[1]) if len(s) > 1 else 0
 
+				# Daemon listening
+				if(state == "_listening"):
+					self.listening(frame)
+
 				# Server
-				if(state == "Startup"):
-					self.idle(frame, color=Color(20,20,20), fps=10);
+				elif(state == "Startup"):
+					self.idle(frame, color=Color(20,20,20), fps=10)
 				elif(state == "ClientOpened"):
 					self.idle(frame, fps=60);
 				elif(state == "ClientClosed"):
-					self.idle(frame, color=Color(20,20,20), fps=10);
+					self.idle(frame, color=Color(20,20,20), fps=10)
+
 				# Machine
 				elif(state == "Connected"):
-					self.idle(frame);
+					self.idle(frame)
 				elif(state == "Disconnected"):
-					self.idle(frame, fps=10);
+					self.idle(frame, fps=10)
 				elif(state == "Error"):
-					self.error(frame);
+					self.error(frame)
 				
 				# File Handling	
 				elif(state == "Upload"):
-					self.warning(frame);
+					self.warning(frame)
 					
 				# Laser Job
 				elif(state == "PrintStarted"):

@@ -6,7 +6,7 @@ import sys
 def client():
 	state = sys.argv[1]
 
-	socket_file = "/var/run/mrbeam_state.sock"
+	socket_file = "/var/run/mrbeam_ledstrips.sock"
 	s = None # socket object
 
 	s = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
