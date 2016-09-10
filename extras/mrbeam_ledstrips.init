@@ -2,7 +2,7 @@
 
 ### BEGIN INIT INFO
 # Provides:          mrbeam_ledstrips
-# Required-Start:    $local_fs 
+# Required-Start:    $local_fs networking
 # Required-Stop:
 # Should-Start:
 # Should-Stop:
