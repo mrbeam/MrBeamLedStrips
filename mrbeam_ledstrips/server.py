@@ -206,3 +206,5 @@ def server():
 if __name__ == '__main__':
 	server()
 
+class InvalidConfig(Exception):
+    pass
