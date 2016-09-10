@@ -19,7 +19,7 @@ def client():
 		print "recv: " + data
 		s.close()
 	finally:
-		sock.close()
+		s.close()
 
 
 if __name__ == "__main__":

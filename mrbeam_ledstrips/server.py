@@ -5,7 +5,7 @@ import logging
 import sys
 import threading
 import signal
-import state_animations.LEDs
+from .state_animations import LEDs
 
 
 
@@ -138,7 +138,7 @@ def server():
 	if args.daemon:
 		import os
 		import sys
-		from daemon import Daemon
+		from .daemon import Daemon
 
 		if args.daemon == "stop":
 			# stop the daemon
@@ -193,7 +193,7 @@ def server():
 
 	else:
 		# start as daemon
-		from daemon import Daemon
+		from .daemon import Daemon
 
 		class ServerDaemon(Daemon):
 			def run(self):
