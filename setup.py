@@ -5,8 +5,8 @@ from setuptools import setup, Command
 
 import versioneer
 versioneer.VCS = 'git'
-versioneer.versionfile_source = 'src/_version.py'
-versioneer.versionfile_build = 'src/_version.py'
+versioneer.versionfile_source = 'mrbeam_ledstrips/_version.py'
+versioneer.versionfile_build = 'mrbeam_ledstrips/_version.py'
 versioneer.tag_prefix = ''
 versioneer.parentdir_prefix = ''
 versioneer.lookupfile = '.versioneer-lookup'
