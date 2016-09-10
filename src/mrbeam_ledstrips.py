@@ -5,7 +5,7 @@ import logging
 import sys
 import threading
 import signal
-from mrbeam_led_states import LEDs
+from state_animations import LEDs
 
 
 

@@ -1,6 +1,6 @@
 # Library to visualize the Mr Beam Machine States with the SK6812 LEDs
 # Author: Teja Philipp (teja@mr-beam.org)
-# based on https://github.com/jgarff/rpi_ws281x
+# using https://github.com/jgarff/rpi_ws281x
 
 import time
 import signal
