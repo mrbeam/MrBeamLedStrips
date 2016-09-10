@@ -105,6 +105,39 @@ class Server(object):
 		self.leds.change_state(state)
 		return True, None
 
+def parse_configfile(configfile):
+	if not os.path.exists(configfile):
+		return None
+
+	mandatory = ("socket")
+
+	default_config = dict(
+		socket = "/var/run/mrbeam_ledstrips.sock"
+	)
+	
+	try:
+		with open(configfile, "r") as f:
+			config = yaml.safe_load(f)
+	except:
+		raise InvalidConfig("error loading config file")
+
+	def merge_config(default, config, mandatory, prefix=None):
+		result = dict()
+		for k, v in default.items():
+			result[k] = v
+
+			prefixed_key = "%s.%s" % (prefix, k) if prefix else k
+			if isinstance(v, dict):
+				result[k] = merge_config(v, config[k] if k in config else dict(), mandatory, prefixed_key)
+			else:
+				if k in config:
+					result[k] = config[k]
+
+			if result[k] is None and prefixed_key in mandatory:
+				raise InvalidConfig("mandatory key %s is missing" % k)
+		return result
+
+	return merge_config(default_config, config, mandatory)
 
 
 def start_server(config):
