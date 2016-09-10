@@ -10,14 +10,19 @@ def client():
 	s = None # socket object
 
 	s = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
-	s.connect(socket_file)
+	try:
+		s.connect(socket_file)
+	except socket.error as msg:
+		print "socket error: %s " % msg
+		print "Unable to connect to: %s. Daemon running?" % socket_file
+		sys.exit(1)
 
 	try:
 		s.send(state+'\x00')
 		print "sent state " + state
 		data = s.recv(1024)
 		print "recv: " + data
-		s.close()
+		s.close()		
 	finally:
 		s.close()
 
