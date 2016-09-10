@@ -177,7 +177,8 @@ def params():
         "https://github.com/mrbeam/rpi_ws281x"
     ]
     install_requires = [
-        "PyYaml"
+        "PyYaml",
+		"rpi_ws281x"
     ]
 
 #setup(name='some-name',

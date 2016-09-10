@@ -5,7 +5,7 @@ import logging
 import sys
 import threading
 import signal
-from state_animations import LEDs
+import state_animations.LEDs
 
 
 
