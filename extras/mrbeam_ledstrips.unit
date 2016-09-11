@@ -1,0 +1,11 @@
+[Unit]
+Description=Mr Beam II Ledstrip Daemon
+After=socket.target multi-user.target
+
+[Service]
+Type=idle
+ExecStart=/usr/local/bin/mrbeam_ledstrips
+PIDFile=/var/run/mrbeam_ledstrips.pid
+
+[Install]
+WantedBy=multi-user.target
