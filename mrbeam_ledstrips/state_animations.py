@@ -315,7 +315,7 @@ class LEDs():
 				elif(state == "Startup"):
 					self.idle(frame, color=Color(20,20,20), fps=10)
 				elif(state == "ClientOpened"):
-					self.idle(frame, fps=60);
+					self.idle(frame, fps=40);
 				elif(state == "ClientClosed"):
 					self.idle(frame, color=Color(20,20,20), fps=10)
 
