@@ -127,15 +127,15 @@ class LEDs():
 		self.strip.show()
 
 def all_on(self):
-		involved_registers = [LEDS_IN_RIGHT, LEDS_IN_LEFT, LEDS_RIGHT_FRONT,LEDS_LEFT_FRONT,LEDS_RIGHT_BACK,LEDS_LEFT_BACK];
-		
-		color = WHITE
-		for r in involved_registers:
-			l = len(r)
-			for i in range(l):
-				self.strip.setPixelColor(r[i], color)
-		self.strip.setBrightness(255);
-		self.strip.show()
+	involved_registers = [LEDS_IN_RIGHT, LEDS_IN_LEFT, LEDS_RIGHT_FRONT,LEDS_LEFT_FRONT,LEDS_RIGHT_BACK,LEDS_LEFT_BACK];
+
+	color = WHITE
+	for r in involved_registers:
+		l = len(r)
+		for i in range(l):
+			self.strip.setPixelColor(r[i], color)
+	self.strip.setBrightness(255);
+	self.strip.show()
 
 
 	# alternating upper and lower yellow 
