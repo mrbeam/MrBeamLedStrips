@@ -25,7 +25,7 @@ EXTRAS_FILES = [
     ('/etc/default/', [('extras/mrbeam_ledstrips.default', 'mrbeam_ledstrips', 0644)]),
     ('/etc/', [('extras/mrbeam_ledstrips.yaml', 'mrbeam_ledstrips.yaml', 0600)]),
     ('/etc/logrotate.d/', [('extras/mrbeam_ledstrips.logrotate', 'logrotate', 0644)]),
-    ('/lib/systemd/system/', [('extras/mrbeam_ledstrips.unit', 'mrbeam_ledstrips.unit', 0644)])
+    ('/lib/systemd/system/', [('extras/mrbeam_ledstrips.unit', 'mrbeam_ledstrips.service', 0644)])
 ]
 
 
