@@ -69,6 +69,8 @@ class InstallExtrasCommand(Command):
         import shutil
         import os
 
+		# TODO enable service by running "sudo systemctl enable mrbeam_ledstrips.service" or symlinking
+
         for folder, mode in EXTRAS_FOLDERS:
             try:
                 if os.path.exists(folder):
