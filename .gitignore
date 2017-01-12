@@ -3,3 +3,4 @@ nbproject
 *.pyc
 dist
 build
+.idea/
