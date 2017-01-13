@@ -50,7 +50,7 @@ class LEDs():
 		self.brightness = 255
 		
 	def change_state(self, state):
-		print("state change" + str(self.state) + " => " + str(state))
+		print("state change " + str(self.state) + " => " + str(state))
 		self.state = state
 
 	def clean_exit(self, signal, msg):
