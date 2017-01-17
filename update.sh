@@ -4,7 +4,7 @@ printf "Downloading new version...\n"
 git fetch --all
 git reset --hard origin/master
 printf "Remove old version...\n"
-sudo pip uninstall mrbeam-ledstrips
+sudo pip uninstall -y mrbeam-ledstrips
 printf "Installing new version...\n"
 sudo python setup.py install
 printf "Restarting service...\n"
