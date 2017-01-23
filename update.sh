@@ -9,3 +9,4 @@ printf "Installing new version...\n"
 sudo python setup.py install
 printf "Restarting service...\n"
 sudo systemctl restart mrbeam_ledstrip.service
+
