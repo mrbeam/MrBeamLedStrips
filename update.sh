@@ -8,5 +8,5 @@ sudo pip uninstall -y mrbeam-ledstrips
 printf "Installing new version...\n"
 sudo python setup.py install
 printf "Restarting service...\n"
-sudo systemctl restart mrbeam_ledstrip.service
+sudo systemctl restart mrbeam_ledstrips.service
 
