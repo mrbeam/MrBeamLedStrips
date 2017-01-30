@@ -10,15 +10,14 @@ import os
 from .state_animations import LEDs
 
 
-
 class Server(object):
 
 	def __init__(self, server_address=None):
-		
-
 		self.logger = logging.getLogger(__name__)
+
 		def exception_logger(exc_type, exc_value, exc_tb):
 			self.logger.error("Uncaught exception", exc_info=(exc_type, exc_value, exc_tb))
+
 		sys.excepthook = exception_logger
 
 		self.server_address = server_address
@@ -29,7 +28,6 @@ class Server(object):
 		self.leds = LEDs()
 		print("initialized")
 		signal.signal(signal.SIGTERM, self.leds.clean_exit) # switch off the LEDs on exit
-
 
 	def _socket_monitor(self, server_address, callback):
 		
@@ -54,7 +52,7 @@ class Server(object):
 					self.logger.info('Waiting for connection on socket...')
 					connection, client_address = sock.accept()
 
-				#with self.mutex:
+				# with self.mutex:
 					try:
 						buffer = []
 						while True:
@@ -94,7 +92,6 @@ class Server(object):
 			os.unlink(server_address)
 			self.leds.clean_exit(signal.SIGTERM, None)
 
-
 	def start(self):
 		self.logger.info("### Starting up ledstrip server...")
 		self.animation = threading.Thread(target=self.leds.loop, kwargs=dict())
@@ -107,6 +104,7 @@ class Server(object):
 		self.leds.change_state(state)
 		return True, None
 
+
 def parse_configfile(configfile):
 	if not os.path.exists(configfile):
 		return None
@@ -114,7 +112,7 @@ def parse_configfile(configfile):
 	mandatory = ("socket")
 
 	default_config = dict(
-		socket = "/var/run/mrbeam_ledstrips.sock"
+		socket="/var/run/mrbeam_ledstrips.sock"
 	)
 	
 	try:
@@ -146,13 +144,12 @@ def start_server(config):
 	kwargs = dict(
 				  server_address=config["socket"],
 				  )
-	s = Server( ** kwargs)
+	s = Server(** kwargs)
 	s.start()
 
 
 def server():
 	parser = argparse.ArgumentParser(parents=[])
-
 
 	parser.add_argument("-c", "--config", default="/etc/mrbeam_ledstrips.yaml", help="Config file location")
 	parser.add_argument("-f", "--foreground", action="store_true", help="Run in foreground instead of as daemon")
@@ -241,5 +238,6 @@ def server():
 if __name__ == '__main__':
 	server()
 
+
 class InvalidConfig(Exception):
-    pass
+	pass

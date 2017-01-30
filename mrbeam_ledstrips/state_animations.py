@@ -295,7 +295,7 @@ class LEDs():
 			while True:
 				data = self.state
 				if not data:
-					state_string = "off" #self.demo_state(frame)
+					state_string = "off"  # self.demo_state(frame)
 				else:
 					state_string = data
 
