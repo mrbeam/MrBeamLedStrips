@@ -24,7 +24,7 @@ EXTRAS_FILES = [
     ('/etc/init.d/', [('extras/mrbeam_ledstrips.init', 'mrbeam_ledstrips', 0755)]),
     ('/etc/default/', [('extras/mrbeam_ledstrips.default', 'mrbeam_ledstrips', 0644)]),
     ('/etc/', [('extras/mrbeam_ledstrips.yaml', 'mrbeam_ledstrips.yaml', 0600)]),
-    ('/etc/logrotate.d/', [('extras/mrbeam_ledstrips.logrotate', 'logrotate', 0644)]),
+    ('/etc/logrotate.d/', [('extras/mrbeam_ledstrips.logrotate', 'mrbeam_ledstrips', 0644)]),
     ('/lib/systemd/system/', [('extras/mrbeam_ledstrips.unit', 'mrbeam_ledstrips.service', 0644)])
 ]
 
@@ -69,7 +69,7 @@ class InstallExtrasCommand(Command):
         import shutil
         import os
 
-		# TODO enable service by running "sudo systemctl enable mrbeam_ledstrips.service" or symlinking
+        # TODO enable service by running "sudo systemctl enable mrbeam_ledstrips.service" or symlinking
 
         for folder, mode in EXTRAS_FOLDERS:
             try:
@@ -181,15 +181,15 @@ def params():
     ]
     install_requires = [
         "PyYaml",
-		"rpi_ws281x"
+        "rpi_ws281x"
     ]
 
 #setup(name='some-name',
 #      ...
 #      entry_points = {
 #              'console_scripts': [
-#                  'command-name = package.module:main_func_name',                  
-#              ],              
+#                  'command-name = package.module:main_func_name',
+#              ],
 #          },
 #)
     entry_points = {
