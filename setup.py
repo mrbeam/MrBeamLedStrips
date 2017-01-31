@@ -183,14 +183,6 @@ def params():
         "rpi_ws281x"
     ]
 
-#setup(name='some-name',
-#      ...
-#      entry_points = {
-#              'console_scripts': [
-#                  'command-name = package.module:main_func_name',
-#              ],
-#          },
-#)
     entry_points = {
         "console_scripts": {
             "mrbeam_ledstrips = mrbeam_ledstrips:server",
