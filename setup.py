@@ -21,7 +21,6 @@ EXTRAS_FOLDERS = [
 ]
 
 EXTRAS_FILES = [
-    ('/etc/init.d/', [('extras/mrbeam_ledstrips.init', 'mrbeam_ledstrips', 0755)]),
     ('/etc/default/', [('extras/mrbeam_ledstrips.default', 'mrbeam_ledstrips', 0644)]),
     ('/etc/', [('extras/mrbeam_ledstrips.yaml', 'mrbeam_ledstrips.yaml', 0600)]),
     ('/etc/logrotate.d/', [('extras/mrbeam_ledstrips.logrotate', 'mrbeam_ledstrips', 0644)]),
