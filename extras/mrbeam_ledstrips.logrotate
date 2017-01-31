@@ -5,5 +5,6 @@
     delaycompress
     missingok
     notifempty
+    copytruncate
     create 644 root root
 }
