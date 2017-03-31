@@ -174,9 +174,7 @@ def params():
     packages = ["mrbeam_ledstrips"]
     zip_safe = False
 
-    dependency_links = [
-        "https://github.com/mrbeam/rpi_ws281x"
-    ]
+    dependency_links = []
     install_requires = [
         "PyYaml",
         "rpi_ws281x"
