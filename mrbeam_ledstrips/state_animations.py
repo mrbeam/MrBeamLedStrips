@@ -14,8 +14,6 @@ LED_FREQ_HZ = 800000  # LED signal frequency in Hz (usually 800kHz)
 LED_DMA = 5           # DMA channel to use for generating signal (try 5)
 LED_BRIGHTNESS = 255  # 0..255 / Dim if too much power is used.
 LED_INVERT = False    # True to invert the signal (when using NPN transistor level shift)
-LED_CHANNEL = 0
-LED_STRIP = ws.SK6812_STRIP  # alternatives: ws.SK6812_STRIP_RGBW, ws.SK6812W_STRIP
 
 # LED strip configuration:
 # Serial numbering of LEDs on the Mr Beam modules
@@ -42,7 +40,7 @@ ORANGE = Color(226, 83, 3)
 class LEDs():
 	def __init__(self):
 		# Create NeoPixel object with appropriate configuration.
-		self.strip = Adafruit_NeoPixel(LED_COUNT, GPIO_PIN, LED_FREQ_HZ, LED_DMA, LED_INVERT, LED_BRIGHTNESS, LED_CHANNEL, LED_STRIP)
+		self.strip = Adafruit_NeoPixel(LED_COUNT, GPIO_PIN, LED_FREQ_HZ, LED_DMA, LED_INVERT, LED_BRIGHTNESS)
 		self.strip.begin()  # Init the LED-strip
 		self.state = "_listening"
 		signal.signal(signal.SIGTERM, self.clean_exit)  # switch off the LEDs on exit
