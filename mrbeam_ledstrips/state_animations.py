@@ -24,8 +24,7 @@ LEDS_LEFT_FRONT = [22, 23, 24, 25, 26, 27, 28]
 LEDS_LEFT_BACK = [29, 30, 31, 32, 33, 34, 35]
 
 # order is right -> left
-LEDS_IN_RIGHT = [14, 15, 16, 17]
-LEDS_IN_LEFT = [18, 19, 20, 21]
+LEDS_INSIDE = [14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31]
 
 # color definitions
 OFF = Color(0, 0, 0)
@@ -122,7 +121,7 @@ class LEDs():
 		self.strip.show()
 
 	def all_on(self):
-		involved_registers = [LEDS_IN_RIGHT, LEDS_IN_LEFT, LEDS_RIGHT_FRONT, LEDS_LEFT_FRONT, LEDS_RIGHT_BACK, LEDS_LEFT_BACK]
+		involved_registers = [LEDS_INSIDE, LEDS_RIGHT_FRONT, LEDS_LEFT_FRONT, LEDS_RIGHT_BACK, LEDS_LEFT_BACK]
 
 		color = WHITE
 		for r in involved_registers:
@@ -223,7 +222,7 @@ class LEDs():
 		self.strip.show()
 
 	def idle(self, frame, color=WHITE, fps=50):
-		leds = LEDS_RIGHT_BACK + list(reversed(LEDS_RIGHT_FRONT)) + LEDS_IN_RIGHT + LEDS_IN_LEFT + LEDS_LEFT_FRONT + list(reversed(LEDS_LEFT_BACK))
+		leds = LEDS_RIGHT_BACK + list(reversed(LEDS_RIGHT_FRONT)) + LEDS_INSIDE + LEDS_LEFT_FRONT + list(reversed(LEDS_LEFT_BACK))
 		div = 100/fps
 		c = frame/div % len(leds)
 		for i in range(len(leds)):
@@ -258,7 +257,7 @@ class LEDs():
 		self.strip.show()
 
 	def illuminate(self, color=WHITE):
-		leds = LEDS_IN_RIGHT + LEDS_IN_LEFT
+		leds = LEDS_INSIDE
 		l = len(leds)
 		for i in range(l):
 			self.strip.setPixelColor(leds[i], color)		
