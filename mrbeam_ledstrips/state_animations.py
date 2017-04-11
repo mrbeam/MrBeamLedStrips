@@ -20,8 +20,8 @@ LED_INVERT = False    # True to invert the signal (when using NPN transistor lev
 # order is top -> down
 LEDS_RIGHT_BACK = [0, 1, 2, 3, 4, 5, 6]
 LEDS_RIGHT_FRONT = [7, 8, 9, 10, 11, 12, 13]
-LEDS_LEFT_FRONT = [22, 23, 24, 25, 26, 27, 28]
-LEDS_LEFT_BACK = [29, 30, 31, 32, 33, 34, 35]
+LEDS_LEFT_FRONT = [32, 33, 34, 35, 36, 37, 38]
+LEDS_LEFT_BACK = [39, 40, 41, 42, 43, 44, 45]
 
 # order is right -> left
 LEDS_INSIDE = [14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31]
