@@ -266,7 +266,7 @@ class LEDs():
 		self.strip.show()
 
 	def static_color(self, color=WHITE):
-		leds = [LEDS_INSIDE, LEDS_RIGHT_FRONT, LEDS_LEFT_FRONT, LEDS_RIGHT_BACK, LEDS_LEFT_BACK]
+		leds = LEDS_INSIDE + LEDS_RIGHT_FRONT + LEDS_LEFT_FRONT + LEDS_RIGHT_BACK + LEDS_LEFT_BACK
 		for i in range(len(leds)):
 			self.strip.setPixelColor(leds[i], color)
 		self.strip.setBrightness(self.brightness)
