@@ -2,9 +2,22 @@
 
 import socket
 import sys
+from _version import get_versions
 
 
 def client():
+
+	if len(sys.argv) <= 1:
+		vers = get_versions()
+		v_string = ""
+		if 'branch' in vers and vers['branch']:
+			v_string = "{} ({})".format(vers['full'], vers['branch'])
+		else:
+			v_string = vers['full']
+		print "MrBeam LED Strips v{}".format(v_string)
+		sys.exit(0)
+
+
 	state = sys.argv[1]
 
 	socket_file = "/var/run/mrbeam_ledstrips.sock"
