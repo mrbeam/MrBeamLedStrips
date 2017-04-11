@@ -29,8 +29,8 @@ LEDS_INSIDE = [14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 3
 # color definitions
 OFF = Color(0, 0, 0)
 WHITE = Color(255, 255, 255)
-RED = Color(0, 255, 0)
-GREEN = Color(255, 0, 0)
+RED = Color(255, 0, 0)
+GREEN = Color(0, 255, 0)
 BLUE = Color(0, 0, 255)
 YELLOW = Color(255, 200, 0)
 ORANGE = Color(226, 83, 3)
