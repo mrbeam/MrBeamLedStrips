@@ -265,6 +265,13 @@ class LEDs():
 		self.strip.setBrightness(self.brightness)
 		self.strip.show()
 
+	def static_color(self, color=WHITE):
+		leds = [LEDS_INSIDE, LEDS_RIGHT_FRONT, LEDS_LEFT_FRONT, LEDS_RIGHT_BACK, LEDS_LEFT_BACK]
+		for i in range(len(leds)):
+			self.strip.setPixelColor(leds[i], color)
+		self.strip.setBrightness(self.brightness)
+		self.strip.show()
+
 	def dim_color(self, col, brightness):
 		r = (col & 0xFF0000) >> 16
 		g = (col & 0x00FF00) >> 8
@@ -375,6 +382,12 @@ class LEDs():
 					elif param < 0:
 						param = 0
 					self.brightness = param
+				elif state == "all_red":
+					self.static_color(RED)
+				elif state == "all_green":
+					self.static_color(GREEN)
+				elif state == "all_blue":
+					self.static_color(BLUE)
 				else:
 					self.idle(frame, color=Color(20, 20, 20), fps=10)
 
