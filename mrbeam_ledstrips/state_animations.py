@@ -8,7 +8,7 @@ from neopixel import *
 import time
 import sys
 
-LED_COUNT = 36        # Number of LED pixels.
+LED_COUNT = 46        # Number of LED pixels.
 GPIO_PIN = 18         # Pin #12 on the RPi. GPIO pin must support PWM
 LED_FREQ_HZ = 800000  # LED signal frequency in Hz (usually 800kHz)
 LED_DMA = 5           # DMA channel to use for generating signal (try 5)
