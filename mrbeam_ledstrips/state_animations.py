@@ -2,7 +2,6 @@
 # Author: Teja Philipp (teja@mr-beam.org)
 # using https://github.com/jgarff/rpi_ws281x
 
-import time
 import signal
 from neopixel import *
 import time
