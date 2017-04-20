@@ -43,17 +43,23 @@ class LEDs():
 		self.strip = Adafruit_NeoPixel(LED_COUNT, GPIO_PIN, LED_FREQ_HZ, LED_DMA, LED_INVERT, LED_BRIGHTNESS)
 		self.strip.begin()  # Init the LED-strip
 		self.state = "_listening"
+		self.past_states = []
 		signal.signal(signal.SIGTERM, self.clean_exit)  # switch off the LEDs on exit
 		self.job_progress = 0
 		self.brightness = 255
 
 	def change_state(self, state):
 		print("state change " + str(self.state) + " => " + str(state))
+		if self.state != state:
+			self.past_states.append(self.state)
+			while len(self.past_states) > 10:
+				self.past_states.pop(0)
 		self.state = state
 		self.frame = 0
 
 	def clean_exit(self, signal, msg):
-		print 'shutting down'
+		print 'shutting down, signal was: %s' % signal
+		self.logger.info("shutting down, signal was: %s", signal)
 		self.off()
 		sys.exit(0)
 
@@ -311,6 +317,18 @@ class LEDs():
 		else:
 			return "warning"
 
+	def rollback(self):
+		if len(self.past_states) >= 2:
+			#first remove state that needs to be rolled back from
+			old_state = self.past_states.pop()
+			# reinstate the last past_state
+			self.state = self.past_states.pop()
+			self.logger.info("Rolleback: from '%s' to '%s'", old_state, self.state)
+		else:
+			self.logger.warn("Rolleback: nothing to roll back to.")
+			if len(self.past_states) >= 1:
+				self.state = self.past_states.pop()
+
 	def loop(self):
 		try:
 			self.frame = 0
@@ -334,6 +352,9 @@ class LEDs():
 				elif state == "all_on":
 					self.all_on()
 
+				elif state == "rollback":
+					self.rollback()
+
 				# Server
 				elif state == "Startup":
 					self.idle(self.frame, color=Color(20, 20, 20), fps=10)
@@ -353,6 +374,8 @@ class LEDs():
 					self.shutdown_prepare(self.frame)
 				elif state == "Shutdown":
 					self.shutdown(self.frame)
+				elif state == "ShutdownPrepareCancel":
+					self.rollback()
 
 				# File Handling
 				elif state == "Upload":
@@ -418,6 +441,7 @@ class LEDs():
 				# time.sleep(10/1000.0)
 
 		except KeyboardInterrupt:
+			self.logger.exception("KeyboardInterrupt Exception in animation loop:")
 			self.clean_exit(signal.SIGTERM, None)
 		except:
 			self.logger.exception("Some Exception in animation loop:")
