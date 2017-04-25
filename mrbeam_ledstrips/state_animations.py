@@ -188,7 +188,7 @@ class LEDs():
 		self.strip.show()
 
 	# pauses the progress animation with a pulsing drip
-	def progress_pause(self, value, frame, beathing=True, color_done=WHITE, color_drip=BLUE, fps=50):
+	def progress_pause(self, value, frame, breathing=True, color_done=WHITE, color_drip=BLUE, fps=50):
 		involved_registers = [LEDS_RIGHT_FRONT, LEDS_LEFT_FRONT, LEDS_RIGHT_BACK, LEDS_LEFT_BACK]
 		l = len(LEDS_RIGHT_BACK)
 		f_count = 64.0
@@ -317,17 +317,20 @@ class LEDs():
 		else:
 			return "warning"
 
-	def rollback(self):
-		if len(self.past_states) >= 2:
-			#first remove state that needs to be rolled back from
-			old_state = self.past_states.pop()
-			# reinstate the last past_state
-			self.state = self.past_states.pop()
-			self.logger.info("Rolleback: from '%s' to '%s'", old_state, self.state)
+
+	def rollback(self, steps=1):
+		if len(self.past_states) >= steps:
+			for x in range(0, steps):
+				old_state = self.past_states.pop()
+				self.logger.info("Rolleback step %s/%s: rolling back from '%s' to '%s'", x, steps, self.state, old_state)
+				self.state = old_state
 		else:
-			self.logger.warn("Rolleback: nothing to roll back to.")
+			self.logger.warn("Rolleback: Can't rollback %s steps, max steps: %s", steps, len(self.past_states))
 			if len(self.past_states) >= 1:
 				self.state = self.past_states.pop()
+			else:
+				self.state = "_listening"
+			self.logger.warn("Rolleback: fallback to %s", self.state)
 
 	def loop(self):
 		try:
@@ -353,7 +356,7 @@ class LEDs():
 					self.all_on()
 
 				elif state == "rollback":
-					self.rollback()
+					self.rollback(2)
 
 				# Server
 				elif state == "Startup":
@@ -375,7 +378,7 @@ class LEDs():
 				elif state == "Shutdown":
 					self.shutdown(self.frame)
 				elif state == "ShutdownPrepareCancel":
-					self.rollback()
+					self.rollback(2)
 
 				# File Handling
 				elif state == "Upload":
@@ -396,7 +399,7 @@ class LEDs():
 					self.progress_pause(self.job_progress, self.frame, False)
 				elif state == "PrintPausedTimeoutBlock":
 					if self.frame > 50:
-						self.change_state("PrintPausedTimeout")
+						self.change_state("PrintPausedWaiting")
 					else:
 						self.progress_pause(self.job_progress, self.frame, False, color_drip=RED)
 				elif state == "PrintResumed":
@@ -408,6 +411,10 @@ class LEDs():
 					self.job_finished(self.frame)
 				elif state == "pause":
 					self.progress_pause(param, self.frame)
+				elif state == "ReadyToPrint":
+					self.flash(self.frame, color=BLUE, fps=20)
+				elif state == "ReadyToPrintCancel":
+					self.idle(self.frame)
 
 				# Slicing
 				elif state == "SlicingStarted":
@@ -423,7 +430,10 @@ class LEDs():
 
 				# Settings
 				elif state == "SettingsUpdated":
-					self.flash(self.frame, color=WHITE)
+					if self.frame > 50:
+						self.rollback()
+					else:
+						self.flash(self.frame, color=WHITE)
 
 				# other
 				elif state == "off":
