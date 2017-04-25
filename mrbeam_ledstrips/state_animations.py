@@ -188,12 +188,12 @@ class LEDs():
 		self.strip.show()
 
 	# pauses the progress animation with a pulsing drip
-	def progress_pause(self, value, frame, color_done=WHITE, color_drip=BLUE, fps=50):
+	def progress_pause(self, value, frame, beathing=True, color_done=WHITE, color_drip=BLUE, fps=50):
 		involved_registers = [LEDS_RIGHT_FRONT, LEDS_LEFT_FRONT, LEDS_RIGHT_BACK, LEDS_LEFT_BACK]
 		l = len(LEDS_RIGHT_BACK)
 		f_count = 64.0
 		div = 100/fps
-		dim = abs((frame/div % f_count*2) - (f_count-1))/f_count
+		dim = abs((frame/div % f_count*2) - (f_count-1))/f_count if beathing else 1
 		self.illuminate()
 
 		for r in involved_registers:
@@ -392,6 +392,13 @@ class LEDs():
 					self.fade_off()
 				elif state == "PrintPaused":
 					self.progress_pause(self.job_progress, self.frame)
+				elif state == "PrintPausedTimeout":
+					self.progress_pause(self.job_progress, self.frame, False)
+				elif state == "PrintPausedTimeoutBlock":
+					if self.frame > 50:
+						self.change_state("PrintPausedTimeout")
+					else:
+						self.progress_pause(self.job_progress, self.frame, False, color_drip=RED)
 				elif state == "PrintResumed":
 					self.progress(self.job_progress, self.frame)
 				elif state == "progress":
