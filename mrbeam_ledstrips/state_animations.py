@@ -400,7 +400,7 @@ class LEDs():
 					self.progress_pause(self.job_progress, self.frame, False)
 				elif state == "PrintPausedTimeoutBlock":
 					if self.frame > 50:
-						self.change_state("PrintPausedWaiting")
+						self.change_state("PrintPausedTimeout")
 					else:
 						self.progress_pause(self.job_progress, self.frame, False, color_drip=RED)
 				elif state == "PrintResumed":
