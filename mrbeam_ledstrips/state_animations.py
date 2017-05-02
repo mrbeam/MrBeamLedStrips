@@ -50,6 +50,7 @@ class LEDs():
 
 	def change_state(self, state):
 		print("state change " + str(self.state) + " => " + str(state))
+		self.logger.info("state change " + str(self.state) + " => " + str(state))
 		if self.state != state:
 			self.past_states.append(self.state)
 			while len(self.past_states) > 10:
@@ -193,7 +194,7 @@ class LEDs():
 		l = len(LEDS_RIGHT_BACK)
 		f_count = 64.0
 		div = 100/fps
-		dim = abs((frame/div % f_count*2) - (f_count-1))/f_count if beathing else 1
+		dim = abs((frame/div % f_count*2) - (f_count-1))/f_count if breathing else 1
 		self.illuminate()
 
 		for r in involved_registers:
