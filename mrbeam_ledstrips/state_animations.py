@@ -273,7 +273,8 @@ class LEDs():
 		on = f % 20 > 5
 		if on:
 			if (frame < 500):
-				brightness = int(255 - (f / 2))
+				brightness = int(205 - (f / 2))
+				brightness = brightness if brightness > 0 else 0
 				myColor = self.dim_color(RED, brightness)
 			else:
 				myColor = RED
