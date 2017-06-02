@@ -47,7 +47,7 @@ class LEDs():
 		signal.signal(signal.SIGTERM, self.clean_exit)  # switch off the LEDs on exit
 		self.job_progress = 0
 		self.brightness = LED_BRIGHTNESS
-		self.frame_duration = 1000.0 / 100 # milliseconds => 100 frames per second
+		self.frame_duration = 0.01 # seconds => 100 frames per second
 		self.update_required = False
 
 	def change_state(self, state):
@@ -458,7 +458,7 @@ class LEDs():
 						param = 100
 					elif param < 1:
 						param = 1
-					self.frame_duration = 1000.0 / param
+					self.frame_duration = 1.0 / param
 				else:
 					self.idle(self.frame, color=Color(20, 20, 20), fps=10)
 
