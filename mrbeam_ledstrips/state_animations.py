@@ -462,7 +462,7 @@ class LEDs():
 				else:
 					self.idle(self.frame, color=Color(20, 20, 20), fps=10)
 
-				frame += 1
+				self.frame += 1
 				time.sleep(self.frame_duration)
 
 		except KeyboardInterrupt:
