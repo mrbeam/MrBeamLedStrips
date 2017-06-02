@@ -71,7 +71,7 @@ class LEDs():
 			self._set_color(i, OFF)
 		self._update()
 
-	def fade_off(self, fps=50):
+	def fade_off(self, fps=5):
 		old_brightness = self.brightness
 		for i in range(old_brightness, -1, -1):
 			self.brightness = i
@@ -89,7 +89,7 @@ class LEDs():
 	def error(self, frame):
 		self.flash(frame)
 
-	def flash(self, frame, color=RED, fps=50):
+	def flash(self, frame, color=RED, fps=5):
 		involved_registers = [LEDS_RIGHT_FRONT, LEDS_LEFT_FRONT, LEDS_RIGHT_BACK, LEDS_LEFT_BACK]
 		l = len(LEDS_RIGHT_BACK)
 
@@ -116,7 +116,7 @@ class LEDs():
 					self._set_color(r[i], OFF)
 		self._update()
 
-	def listening(self, frame, fps=50):
+	def listening(self, frame, fps=5):
 		involved_registers = [LEDS_RIGHT_FRONT, LEDS_LEFT_FRONT, LEDS_RIGHT_BACK, LEDS_LEFT_BACK]
 		l = len(LEDS_RIGHT_BACK)
 
@@ -142,7 +142,8 @@ class LEDs():
 			l = len(r)
 			for i in range(l):
 				self._set_color(r[i], color)
-		self.strip.setBrightness(255)
+		self.brightness = 255
+		self.update_required = True
 		self._update()
 
 	# alternating upper and lower yellow
@@ -168,7 +169,7 @@ class LEDs():
 
 		self._update()
 
-	def progress(self, value, frame, color_done=WHITE, color_drip=BLUE, fps=20):
+	def progress(self, value, frame, color_done=WHITE, color_drip=BLUE, fps=2):
 		involved_registers = [LEDS_RIGHT_FRONT, LEDS_LEFT_FRONT, LEDS_RIGHT_BACK, LEDS_LEFT_BACK]
 		l = len(LEDS_RIGHT_BACK)
 		div = 100/fps
@@ -194,7 +195,7 @@ class LEDs():
 		self._update()
 
 	# pauses the progress animation with a pulsing drip
-	def progress_pause(self, value, frame, breathing=True, color_done=WHITE, color_drip=BLUE, fps=50):
+	def progress_pause(self, value, frame, breathing=True, color_done=WHITE, color_drip=BLUE, fps=5):
 		involved_registers = [LEDS_RIGHT_FRONT, LEDS_LEFT_FRONT, LEDS_RIGHT_BACK, LEDS_LEFT_BACK]
 		l = len(LEDS_RIGHT_BACK)
 		f_count = 64.0
@@ -219,7 +220,7 @@ class LEDs():
 
 		self._update()
 
-	def drip(self, frame, color=BLUE, fps=50):
+	def drip(self, frame, color=BLUE, fps=5):
 		involved_registers = [LEDS_RIGHT_FRONT, LEDS_LEFT_FRONT, LEDS_RIGHT_BACK, LEDS_LEFT_BACK]
 		l = len(LEDS_RIGHT_BACK)
 		div = 100/fps
@@ -235,7 +236,7 @@ class LEDs():
 
 		self._update()
 
-	def idle(self, frame, color=WHITE, fps=50):
+	def idle(self, frame, color=WHITE, fps=5):
 		leds = LEDS_RIGHT_BACK + list(reversed(LEDS_RIGHT_FRONT)) + LEDS_INSIDE + LEDS_LEFT_FRONT + list(reversed(LEDS_LEFT_BACK))
 		div = 100/fps
 		c = frame/div % len(leds)
@@ -248,7 +249,7 @@ class LEDs():
 
 		self._update()
 
-	def job_finished(self, frame, fps=50):
+	def job_finished(self, frame, fps=5):
 		self.illuminate()
 		involved_registers = [LEDS_RIGHT_FRONT, LEDS_LEFT_FRONT, LEDS_RIGHT_BACK, LEDS_LEFT_BACK]
 		l = len(LEDS_RIGHT_BACK)
@@ -474,9 +475,11 @@ class LEDs():
 			print("Some Exception in animation loop:")
 			
 	def _set_color(self, i, color):
-		if(self.strip.getPixelColor != color):
+		c = self.strip.getPixelColor(i)
+		if(c != color):
 			self.strip.setPixelColor(i, color)
 			self.update_required = True
+			self.logger.info("colors did not match update %i : %i" % color)
 		else:
 			self.logger.info("skipped color update of led %i" % i)
 			
