@@ -459,6 +459,7 @@ class LEDs():
 					elif param < 1:
 						param = 1
 					self.frame_duration = 1.0 / param
+					self.logger.info("Changed animation speed to %d fps (%d ms/frame)" % (param, self.frame_duration))
 				else:
 					self.idle(self.frame, color=Color(20, 20, 20), fps=10)
 
