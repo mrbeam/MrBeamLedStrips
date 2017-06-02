@@ -477,7 +477,7 @@ class LEDs():
 			self.strip.setPixelColor(leds[i], color)
 			self.update_required = True
 		else:
-			self.logger.debug("skipped color update of led %i" % i)
+			self.logger.info("skipped color update of led %i" % i)
 			
 	def _update(self):
 		if(self.update_required):
@@ -485,5 +485,5 @@ class LEDs():
 			self.strip.show();
 			self.update_required = False
 		else:
-			self.logger.debug("skipped flush, no changes")
+			self.logger.info("skipped flush, no changes")
 			
