@@ -46,7 +46,9 @@ class LEDs():
 		self.past_states = []
 		signal.signal(signal.SIGTERM, self.clean_exit)  # switch off the LEDs on exit
 		self.job_progress = 0
-		self.brightness = 255
+		self.brightness = LED_BRIGHTNESS
+		self.frame_duration = 1000.0 / 100 # milliseconds => 100 frames per second
+		self.update_required = False
 
 	def change_state(self, state):
 		print("state change " + str(self.state) + " => " + str(state))
@@ -66,18 +68,22 @@ class LEDs():
 
 	def off(self):
 		for i in range(self.strip.numPixels()):
-			self.strip.setPixelColor(i, OFF)
-		self.strip.show()
+			self._set_color(i, OFF)
+		self._update()
 
 	def fade_off(self, fps=50):
-		for i in range(self.brightness, -1, -1):
-			self.strip.setBrightness(i)
-			self.strip.show()
+		old_brightness = self.brightness
+		for i in range(old_brightness, -1, -1):
+			self.brightness = i
+			self.update_required = True
+			self._update()
 			time.sleep(1.0/fps)
 
 		for i in range(self.strip.numPixels()):
-			self.strip.setPixelColor(i, OFF)
-			self.strip.show()
+			self._set_color(i, OFF)
+			self._update()
+
+		self.brightness = old_brightness
 
 	# pulsing red from the center
 	def error(self, frame):
@@ -105,11 +111,10 @@ class LEDs():
 		for r in involved_registers:
 			for i in range(l):
 				if frames[f][i] >= 1:
-					self.strip.setPixelColor(r[i], color)
+					self._set_color(r[i], color)
 				else:
-					self.strip.setPixelColor(r[i], OFF)
-		self.strip.setBrightness(self.brightness)
-		self.strip.show()
+					self._set_color(r[i], OFF)
+		self._update()
 
 	def listening(self, frame, fps=50):
 		involved_registers = [LEDS_RIGHT_FRONT, LEDS_LEFT_FRONT, LEDS_RIGHT_BACK, LEDS_LEFT_BACK]
@@ -123,11 +128,11 @@ class LEDs():
 		for r in involved_registers:
 			for i in range(l):
 				if i == l-1:
-					self.strip.setPixelColor(r[i], color)
+					self._set_color(r[i], color)
 				else:
-					self.strip.setPixelColor(r[i], OFF)
-		self.strip.setBrightness(self.brightness)
-		self.strip.show()
+					self._set_color(r[i], OFF)
+
+		self._update()
 
 	def all_on(self):
 		involved_registers = [LEDS_INSIDE, LEDS_RIGHT_FRONT, LEDS_LEFT_FRONT, LEDS_RIGHT_BACK, LEDS_LEFT_BACK]
@@ -136,9 +141,9 @@ class LEDs():
 		for r in involved_registers:
 			l = len(r)
 			for i in range(l):
-				self.strip.setPixelColor(r[i], color)
+				self._set_color(r[i], color)
 		self.strip.setBrightness(255)
-		self.strip.show()
+		self._update()
 
 	# alternating upper and lower yellow
 	def warning(self, frame, fps=2):
@@ -157,11 +162,11 @@ class LEDs():
 		for r in involved_registers:
 			for i in range(l):
 				if frames[f][i] >= 1:
-					self.strip.setPixelColor(r[i], YELLOW)
+					self._set_color(r[i], YELLOW)
 				else:
-					self.strip.setPixelColor(r[i], OFF)
-		self.strip.setBrightness(self.brightness)
-		self.strip.show()
+					self._set_color(r[i], OFF)
+
+		self._update()
 
 	def progress(self, value, frame, color_done=WHITE, color_drip=BLUE, fps=20):
 		involved_registers = [LEDS_RIGHT_FRONT, LEDS_LEFT_FRONT, LEDS_RIGHT_BACK, LEDS_LEFT_BACK]
@@ -178,15 +183,15 @@ class LEDs():
 				threshold = value / 100.0 * (l-1)
 				if threshold < bottom_up_idx:
 					if i == c:
-						self.strip.setPixelColor(r[i], color_drip)
+						self._set_color(r[i], color_drip)
 					else:
-						self.strip.setPixelColor(r[i], OFF)
+						self._set_color(r[i], OFF)
 
 				else:
-					self.strip.setPixelColor(r[i], color_done)
+					self._set_color(r[i], color_done)
 
-		self.strip.setBrightness(self.brightness)
-		self.strip.show()
+
+		self._update()
 
 	# pauses the progress animation with a pulsing drip
 	def progress_pause(self, value, frame, breathing=True, color_done=WHITE, color_drip=BLUE, fps=50):
@@ -204,15 +209,15 @@ class LEDs():
 				if threshold < bottom_up_idx:
 					if i == bottom_up_idx / 2:
 						color = self.dim_color(color_drip, dim)
-						self.strip.setPixelColor(r[i], color)
+						self._set_color(r[i], color)
 					else:
-						self.strip.setPixelColor(r[i], OFF)
+						self._set_color(r[i], OFF)
 
 				else:
-					self.strip.setPixelColor(r[i], color_done)
+					self._set_color(r[i], color_done)
 
-		self.strip.setBrightness(self.brightness)
-		self.strip.show()
+
+		self._update()
 
 	def drip(self, frame, color=BLUE, fps=50):
 		involved_registers = [LEDS_RIGHT_FRONT, LEDS_LEFT_FRONT, LEDS_RIGHT_BACK, LEDS_LEFT_BACK]
@@ -223,12 +228,12 @@ class LEDs():
 		for r in involved_registers:
 			for i in range(l):
 				if i == c:
-					self.strip.setPixelColor(r[i], color)
+					self._set_color(r[i], color)
 				else:
-					self.strip.setPixelColor(r[i], OFF)
+					self._set_color(r[i], OFF)
 
-		self.strip.setBrightness(self.brightness)
-		self.strip.show()
+
+		self._update()
 
 	def idle(self, frame, color=WHITE, fps=50):
 		leds = LEDS_RIGHT_BACK + list(reversed(LEDS_RIGHT_FRONT)) + LEDS_INSIDE + LEDS_LEFT_FRONT + list(reversed(LEDS_LEFT_BACK))
@@ -236,12 +241,12 @@ class LEDs():
 		c = frame/div % len(leds)
 		for i in range(len(leds)):
 			if i == c:
-				self.strip.setPixelColor(leds[i], color)
+				self._set_color(leds[i], color)
 			else:
-				self.strip.setPixelColor(leds[i], OFF)
+				self._set_color(leds[i], OFF)
 
-		self.strip.setBrightness(self.brightness)
-		self.strip.show()
+
+		self._update()
 
 	def job_finished(self, frame, fps=50):
 		self.illuminate()
@@ -253,20 +258,17 @@ class LEDs():
 		if f < l*2:
 			for i in range(f/2-1, -1, -1):
 				for r in involved_registers:
-					self.strip.setPixelColor(r[i], GREEN)
+					self._set_color(r[i], GREEN)
 
 		else:
 			for i in range(l-1, -1, -1):
 				for r in involved_registers:
 					brightness = 1 - (f - 2*l)/100.0
 					col = self.dim_color(GREEN, brightness)
-					self.strip.setPixelColor(r[i], col)
+					self._set_color(r[i], col)
 
-		self.strip.setBrightness(self.brightness)
-		self.strip.show()
 
-	def shutdown(self, frame):
-		self.static_color(RED)
+		self._update()
 
 	def shutdown_prepare(self, frame):
 		f = frame
@@ -286,17 +288,15 @@ class LEDs():
 		leds = LEDS_INSIDE
 		l = len(leds)
 		for i in range(l):
-			self.strip.setPixelColor(leds[i], color)
+			self._set_color(leds[i], color)		
 
-		self.strip.setBrightness(self.brightness)
-		self.strip.show()
+		self._update()
 
 	def static_color(self, color=WHITE):
 		leds = LEDS_INSIDE + LEDS_RIGHT_FRONT + LEDS_LEFT_FRONT + LEDS_RIGHT_BACK + LEDS_LEFT_BACK
 		for i in range(len(leds)):
-			self.strip.setPixelColor(leds[i], color)
-		self.strip.setBrightness(self.brightness)
-		self.strip.show()
+			self._set_color(leds[i], color)
+		self._update()
 
 	def dim_color(self, col, brightness):
 		r = (col & 0xFF0000) >> 16
@@ -446,18 +446,24 @@ class LEDs():
 					elif param < 0:
 						param = 0
 					self.brightness = param
+					self.update_required = True
 				elif state == "all_red":
 					self.static_color(RED)
 				elif state == "all_green":
 					self.static_color(GREEN)
 				elif state == "all_blue":
 					self.static_color(BLUE)
+				elif state == "fps":
+					if param > 100:
+						param = 100
+					elif param < 1:
+						param = 1
+					self.frame_duration = 1000.0 / param
 				else:
 					self.idle(self.frame, color=Color(20, 20, 20), fps=10)
 
-				self.frame += 1
-				time.sleep(0.01)
-				# time.sleep(10/1000.0)
+				frame += 1
+				time.sleep(self.frame_duration)
 
 		except KeyboardInterrupt:
 			self.logger.exception("KeyboardInterrupt Exception in animation loop:")
@@ -465,3 +471,19 @@ class LEDs():
 		except:
 			self.logger.exception("Some Exception in animation loop:")
 			print("Some Exception in animation loop:")
+			
+	def _set_color(self, i, color):
+		if(self.strip.getPixelColor != color):
+			self.strip.setPixelColor(leds[i], color)
+			self.update_required = True
+		else:
+			self.logger.debug("skipped color update of led %i" % i)
+			
+	def _update(self):
+		if(self.update_required):
+			self.strip.setBrightness(self.brightness)
+			self.strip.show();
+			self.update_required = False
+		else:
+			self.logger.debug("skipped flush, no changes")
+			
