@@ -474,7 +474,7 @@ class LEDs():
 			
 	def _set_color(self, i, color):
 		if(self.strip.getPixelColor != color):
-			self.strip.setPixelColor(leds[i], color)
+			self.strip.setPixelColor(i, color)
 			self.update_required = True
 		else:
 			self.logger.info("skipped color update of led %i" % i)
