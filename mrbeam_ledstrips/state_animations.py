@@ -484,6 +484,7 @@ class LEDs():
 			self.strip.setBrightness(self.brightness)
 			self.strip.show();
 			self.update_required = False
+			self.logger.info("flush")
 		else:
 			self.logger.info("skipped flush, no changes")
 			
