@@ -479,7 +479,7 @@ class LEDs():
 		if(c != color):
 			self.strip.setPixelColor(i, color)
 			self.update_required = True
-			self.logger.info("colors did not match update %i : %i" % color)
+			self.logger.info("colors did not match update %i : %i" % (color,c))
 		else:
 			self.logger.info("skipped color update of led %i" % i)
 			
