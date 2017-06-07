@@ -438,15 +438,15 @@ class LEDs():
 
 				# Slicing
 				elif state == "SlicingStarted":
-					self.progress(param, self.frame, color_done=BLUE, color_drip=WHITE)
+			 		self.progress(param, self.frame, color_done=BLUE, color_drip=WHITE, state_length=3)
 				elif state == "SlicingDone":
-					self.progress(param, self.frame, color_done=BLUE, color_drip=WHITE)
+					self.progress(param, self.frame, color_done=BLUE, color_drip=WHITE, state_length=3)
 				elif state == "SlicingCancelled":
 					self.idle(self.frame)
 				elif state == "SlicingFailed":
 					self.fade_off()
 				elif state == "SlicingProgress":
-					self.progress(param, self.frame, color_done=BLUE, color_drip=WHITE)
+					self.progress(param, self.frame, color_done=BLUE, color_drip=WHITE, state_length=3)
 
 				# Settings
 				elif state == "SettingsUpdated":
