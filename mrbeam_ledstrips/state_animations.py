@@ -2,6 +2,8 @@
 # Author: Teja Philipp (teja@mr-beam.org)
 # using https://github.com/jgarff/rpi_ws281x
 
+from __future__ import division
+
 import signal
 from neopixel import *
 import time
@@ -14,6 +16,8 @@ LED_FREQ_HZ = 800000  # LED signal frequency in Hz (usually 800kHz)
 LED_DMA = 5           # DMA channel to use for generating signal (try 5)
 LED_BRIGHTNESS = 255  # 0..255 / Dim if too much power is used.
 LED_INVERT = False    # True to invert the signal (when using NPN transistor level shift)
+
+DEFAULT_FPS = 28
 
 # LED strip configuration:
 # Serial numbering of LEDs on the Mr Beam modules
@@ -47,7 +51,8 @@ class LEDs():
 		signal.signal(signal.SIGTERM, self.clean_exit)  # switch off the LEDs on exit
 		self.job_progress = 0
 		self.brightness = LED_BRIGHTNESS
-		self.frame_duration = 0.01 # seconds => 100 frames per second
+		self.fps = DEFAULT_FPS
+		self.frame_duration = self._get_frame_duration(self.fps)
 		self.update_required = False
 
 	def change_state(self, state):
@@ -71,25 +76,28 @@ class LEDs():
 			self._set_color(i, OFF)
 		self._update()
 
-	def fade_off(self, fps=5):
+	def fade_off(self, state_length=0.5, follow_state='ClientOpened'):
+		self.logger.info("fade_off()")
 		old_brightness = self.brightness
 		for i in range(old_brightness, -1, -1):
 			self.brightness = i
 			self.update_required = True
 			self._update()
-			time.sleep(1.0/fps)
+			time.sleep(state_length * self.frame_duration)
 
 		for i in range(self.strip.numPixels()):
 			self._set_color(i, OFF)
 			self._update()
 
 		self.brightness = old_brightness
+		self.change_state(follow_state)
+
 
 	# pulsing red from the center
 	def error(self, frame):
-		self.flash(frame)
+		self.flash(frame, color=RED, state_length=1)
 
-	def flash(self, frame, color=RED, fps=5):
+	def flash(self, frame, color=RED, state_length=2):
 		involved_registers = [LEDS_RIGHT_FRONT, LEDS_LEFT_FRONT, LEDS_RIGHT_BACK, LEDS_LEFT_BACK]
 		l = len(LEDS_RIGHT_BACK)
 
@@ -105,8 +113,7 @@ class LEDs():
 			[0, 0, 0, 1, 0, 0, 0]
 		]
 
-		div = 100/fps
-		f = frame/div % len(frames)
+	 	f = int(round(frame / state_length)) % len(frames)
 
 		for r in involved_registers:
 			for i in range(l):
@@ -116,13 +123,12 @@ class LEDs():
 					self._set_color(r[i], OFF)
 		self._update()
 
-	def listening(self, frame, fps=5):
+	def listening(self, frame, state_length=2):
 		involved_registers = [LEDS_RIGHT_FRONT, LEDS_LEFT_FRONT, LEDS_RIGHT_BACK, LEDS_LEFT_BACK]
 		l = len(LEDS_RIGHT_BACK)
 
-		div = 100/fps
-		f_count = 64.0
-		dim = abs((frame/div % f_count*2) - (f_count-1))/f_count
+		f_count = state_length * self.fps
+		dim = abs((frame/state_length % f_count*2) - (f_count-1))/f_count
 
 		color = self.dim_color(ORANGE, dim)
 		for r in involved_registers:
@@ -147,7 +153,7 @@ class LEDs():
 		self._update()
 
 	# alternating upper and lower yellow
-	def warning(self, frame, fps=2):
+	def upload(self, frame, state_length=8):
 		involved_registers = [LEDS_RIGHT_FRONT, LEDS_LEFT_FRONT, LEDS_RIGHT_BACK, LEDS_LEFT_BACK]
 		l = len(LEDS_RIGHT_BACK)
 		fwd_bwd_range = range(l) + range(l-1, -1, -1)
@@ -157,8 +163,7 @@ class LEDs():
 			[0, 0, 0, 0, 1, 1, 1]
 		]
 
-		div = 100/fps
-		f = frame/div % len(frames)
+		f = int(round(frame / state_length)) % len(frames)
 
 		for r in involved_registers:
 			for i in range(l):
@@ -169,13 +174,12 @@ class LEDs():
 
 		self._update()
 
-	def progress(self, value, frame, color_done=WHITE, color_drip=BLUE, fps=2):
+	def progress(self, value, frame, color_done=WHITE, color_drip=BLUE, state_length=2):
 		involved_registers = [LEDS_RIGHT_FRONT, LEDS_LEFT_FRONT, LEDS_RIGHT_BACK, LEDS_LEFT_BACK]
 		l = len(LEDS_RIGHT_BACK)
-		div = 100/fps
-		c = frame/div % l
+		c = int(round(frame / state_length)) % l
 
-		self.illuminate()
+		# self.illuminate() # interior light always on
 
 		for r in involved_registers:
 			for i in range(l):
@@ -195,13 +199,12 @@ class LEDs():
 		self._update()
 
 	# pauses the progress animation with a pulsing drip
-	def progress_pause(self, value, frame, breathing=True, color_done=WHITE, color_drip=BLUE, fps=5):
+	def progress_pause(self, value, frame, breathing=True, color_done=WHITE, color_drip=BLUE, state_length=1.5):
 		involved_registers = [LEDS_RIGHT_FRONT, LEDS_LEFT_FRONT, LEDS_RIGHT_BACK, LEDS_LEFT_BACK]
 		l = len(LEDS_RIGHT_BACK)
-		f_count = 64.0
-		div = 100/fps
-		dim = abs((frame/div % f_count*2) - (f_count-1))/f_count if breathing else 1
-		self.illuminate()
+		f_count = state_length * self.fps
+		dim = abs((frame/state_length % f_count*2) - (f_count-1))/f_count if breathing else 1
+		# self.illuminate() # interior light always on
 
 		for r in involved_registers:
 			for i in range(l):
@@ -220,26 +223,23 @@ class LEDs():
 
 		self._update()
 
-	def drip(self, frame, color=BLUE, fps=5):
-		involved_registers = [LEDS_RIGHT_FRONT, LEDS_LEFT_FRONT, LEDS_RIGHT_BACK, LEDS_LEFT_BACK]
-		l = len(LEDS_RIGHT_BACK)
-		div = 100/fps
-		c = frame/div % l
+	# def drip(self, frame, color=BLUE, state_length=2):
+	# 	involved_registers = [LEDS_RIGHT_FRONT, LEDS_LEFT_FRONT, LEDS_RIGHT_BACK, LEDS_LEFT_BACK]
+	# 	l = len(LEDS_RIGHT_BACK)
+	# 	c = int(round(frame / state_length)) % l
+    #
+	# 	for r in involved_registers:
+	# 		for i in range(l):
+	# 			if i == c:
+	# 				self._set_color(r[i], color)
+	# 			else:
+	# 				self._set_color(r[i], OFF)
+    #
+	# 	self._update()
 
-		for r in involved_registers:
-			for i in range(l):
-				if i == c:
-					self._set_color(r[i], color)
-				else:
-					self._set_color(r[i], OFF)
-
-
-		self._update()
-
-	def idle(self, frame, color=WHITE, fps=5):
+	def idle(self, frame, color=WHITE, state_length=1):
 		leds = LEDS_RIGHT_BACK + list(reversed(LEDS_RIGHT_FRONT)) + LEDS_INSIDE + LEDS_LEFT_FRONT + list(reversed(LEDS_LEFT_BACK))
-		div = 100/fps
-		c = frame/div % len(leds)
+		c = int(round(frame / state_length)) % len(leds)
 		for i in range(len(leds)):
 			if i == c:
 				self._set_color(leds[i], color)
@@ -249,34 +249,37 @@ class LEDs():
 
 		self._update()
 
-	def job_finished(self, frame, fps=5):
-		self.illuminate()
+	def job_finished(self, frame, state_length=1):
+		# self.illuminate()  # interior light always on
 		involved_registers = [LEDS_RIGHT_FRONT, LEDS_LEFT_FRONT, LEDS_RIGHT_BACK, LEDS_LEFT_BACK]
 		l = len(LEDS_RIGHT_BACK)
-		div = 100/fps
-		f = frame/div % (100 + l*2)
+		f = int(round(frame / state_length)) % (self.fps + l*2)
 
 		if f < l*2:
-			for i in range(f/2-1, -1, -1):
+			for i in range(int(round(f/2))-1, -1, -1):
 				for r in involved_registers:
 					self._set_color(r[i], GREEN)
 
 		else:
 			for i in range(l-1, -1, -1):
 				for r in involved_registers:
-					brightness = 1 - (f - 2*l)/100.0
+					brightness = 1 - (f - 2*l)/self.fps * 1.0
 					col = self.dim_color(GREEN, brightness)
 					self._set_color(r[i], col)
 
-
 		self._update()
 
-	def shutdown_prepare(self, frame):
-		f = frame
-		on = f % 20 > 5
+	def shutdown(self, frame):
+		self.static_color(RED)
+
+	def shutdown_prepare(self, frame, duration_seconds=5):
+		brightness_start_val = 205
+		peak_frame = duration_seconds * self.fps
+		on = frame % 10 > 3
+		brightness = None
 		if on:
-			if (frame < 500):
-				brightness = int(205 - (f / 2))
+			if (frame <= peak_frame):
+				brightness = int(brightness_start_val - (brightness_start_val/peak_frame) * frame)
 				brightness = brightness if brightness > 0 else 0
 				myColor = self.dim_color(RED, brightness)
 			else:
@@ -320,6 +323,11 @@ class LEDs():
 		else:
 			return "warning"
 
+	def set_fps(self, fps):
+		if fps > 100: fps = 100
+		if fps < 1: fps = 1
+		self.fps = fps
+		self.frame_duration = self._get_frame_duration(fps)
 
 	def rollback(self, steps=1):
 		if len(self.past_states) >= steps:
@@ -348,7 +356,14 @@ class LEDs():
 				# split params from state string
 				s = state_string.split(':')
 				state = s[0]
-				param = int(s[1]) if len(s) > 1 else 0
+
+				param = 0
+				if len(s) > 1:
+					param = int(s[1])
+				if len(s) > 2:
+					user_fps = int(s[2])
+					self.set_fps(user_fps)
+
 
 				# Daemon listening
 				if state == "_listening":
@@ -363,17 +378,19 @@ class LEDs():
 
 				# Server
 				elif state == "Startup":
-					self.idle(self.frame, color=Color(20, 20, 20), fps=10)
+					self.listening(self.frame)
+					# self.idle(self.frame, color=Color(20, 20, 20), fps=10)
 				elif state == "ClientOpened":
-					self.idle(self.frame, fps=40)
+					self.idle(self.frame)
 				elif state == "ClientClosed":
-					self.idle(self.frame, color=Color(20, 20, 20), fps=10)
+					self.listening(self.frame)
+					# self.idle(self.frame, color=Color(20, 20, 20), fps=10)
 
 				# Machine
-				elif state == "Connected":
-					self.idle(self.frame)
-				elif state == "Disconnected":
-					self.idle(self.frame, fps=10)
+				# elif state == "Connected":
+				# 	self.idle(self.frame)
+				# elif state == "Disconnected":
+				# 	self.idle(self.frame, fps=10)
 				elif state == "Error":
 					self.error(self.frame)
 				elif state == "ShutdownPrepare":
@@ -385,7 +402,7 @@ class LEDs():
 
 				# File Handling
 				elif state == "Upload":
-					self.warning(self.frame)
+					self.upload(self.frame)
 
 				# Laser Job
 				elif state == "PrintStarted":
@@ -401,7 +418,7 @@ class LEDs():
 				elif state == "PrintPausedTimeout":
 					self.progress_pause(self.job_progress, self.frame, False)
 				elif state == "PrintPausedTimeoutBlock":
-					if self.frame > 50:
+					if self.frame > self.fps:
 						self.change_state("PrintPausedTimeout")
 					else:
 						self.progress_pause(self.job_progress, self.frame, False, color_drip=RED)
@@ -415,7 +432,7 @@ class LEDs():
 				elif state == "pause":
 					self.progress_pause(param, self.frame)
 				elif state == "ReadyToPrint":
-					self.flash(self.frame, color=BLUE, fps=20)
+					self.flash(self.frame, color=BLUE, state_length=2)
 				elif state == "ReadyToPrintCancel":
 					self.idle(self.frame)
 
@@ -436,7 +453,7 @@ class LEDs():
 					if self.frame > 50:
 						self.rollback()
 					else:
-						self.flash(self.frame, color=WHITE)
+						self.flash(self.frame, color=WHITE, state_length=1)
 
 				# other
 				elif state == "off":
@@ -455,14 +472,14 @@ class LEDs():
 				elif state == "all_blue":
 					self.static_color(BLUE)
 				elif state == "fps":
-					if param > 100:
-						param = 100
-					elif param < 1:
-						param = 1
-					self.frame_duration = 1.0 / param
-					self.logger.info("Changed animation speed to %d fps (%d ms/frame)" % (param, self.frame_duration))
+					self.set_fps(param)
+					self.logger.info("Changed animation speed: fps:%d (%s s/frame)" % (self.fps, self.frame_duration))
+					self.rollback()
 				else:
-					self.idle(self.frame, color=Color(20, 20, 20), fps=10)
+					self.idle(self.frame, color=Color(20, 20, 20), state_length=2)
+
+				# interior light always on
+				self.illuminate()
 
 				self.frame += 1
 				time.sleep(self.frame_duration)
@@ -479,16 +496,21 @@ class LEDs():
 		if(c != color):
 			self.strip.setPixelColor(i, color)
 			self.update_required = True
-			self.logger.info("colors did not match update %i : %i" % (color,c))
+			# self.logger.info("colors did not match update %i : %i" % (color,c))
 		else:
-			self.logger.info("skipped color update of led %i" % i)
+			# self.logger.debug("skipped color update of led %i" % i)
+			pass
 			
 	def _update(self):
 		if(self.update_required):
 			self.strip.setBrightness(self.brightness)
 			self.strip.show();
 			self.update_required = False
-			self.logger.info("flush")
+			# self.logger.info("flush")
 		else:
-			self.logger.info("skipped flush, no changes")
+			# self.logger.info("skipped flush, no changes")
+			pass
+
+	def _get_frame_duration(self, fps):
+		return (1.0 / fps) if fps>0 else 1.0
 			
