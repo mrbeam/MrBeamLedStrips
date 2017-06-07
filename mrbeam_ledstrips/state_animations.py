@@ -54,6 +54,7 @@ class LEDs():
 		self.fps = DEFAULT_FPS
 		self.frame_duration = self._get_frame_duration(self.fps)
 		self.update_required = False
+		self._last_interior = None
 
 	def change_state(self, state):
 		print("state change " + str(self.state) + " => " + str(state))
@@ -141,7 +142,7 @@ class LEDs():
 		self._update()
 
 	def all_on(self):
-		involved_registers = [LEDS_INSIDE, LEDS_RIGHT_FRONT, LEDS_LEFT_FRONT, LEDS_RIGHT_BACK, LEDS_LEFT_BACK]
+		involved_registers = [LEDS_RIGHT_FRONT, LEDS_LEFT_FRONT, LEDS_RIGHT_BACK, LEDS_LEFT_BACK]
 
 		color = WHITE
 		for r in involved_registers:
@@ -149,7 +150,6 @@ class LEDs():
 			for i in range(l):
 				self._set_color(r[i], color)
 		self.brightness = 255
-		self.update_required = True
 		self._update()
 
 	# alternating upper and lower yellow
@@ -238,7 +238,7 @@ class LEDs():
 	# 	self._update()
 
 	def idle(self, frame, color=WHITE, state_length=1):
-		leds = LEDS_RIGHT_BACK + list(reversed(LEDS_RIGHT_FRONT)) + LEDS_INSIDE + LEDS_LEFT_FRONT + list(reversed(LEDS_LEFT_BACK))
+		leds = LEDS_RIGHT_BACK + list(reversed(LEDS_RIGHT_FRONT)) + LEDS_LEFT_FRONT + list(reversed(LEDS_LEFT_BACK))
 		c = int(round(frame / state_length)) % len(leds)
 		for i in range(len(leds)):
 			if i == c:
@@ -288,16 +288,18 @@ class LEDs():
 			myColor = OFF
 		self.static_color(myColor)
 
-	def illuminate(self, color=WHITE):
-		leds = LEDS_INSIDE
-		l = len(leds)
-		for i in range(l):
-			self._set_color(leds[i], color)		
+	def set_interior(self, color):
+		if self._last_interior != color:
+			self._last_interior = color
+			leds = LEDS_INSIDE
+			l = len(leds)
+			for i in range(l):
+				self._set_color(leds[i], color)
 
-		self._update()
+			self._update()
 
 	def static_color(self, color=WHITE):
-		leds = LEDS_INSIDE + LEDS_RIGHT_FRONT + LEDS_LEFT_FRONT + LEDS_RIGHT_BACK + LEDS_LEFT_BACK
+		leds = LEDS_RIGHT_FRONT + LEDS_LEFT_FRONT + LEDS_RIGHT_BACK + LEDS_LEFT_BACK
 		for i in range(len(leds)):
 			self._set_color(leds[i], color)
 		self._update()
@@ -364,6 +366,8 @@ class LEDs():
 					user_fps = int(s[2])
 					self.set_fps(user_fps)
 
+				# default interior color
+				interior = WHITE
 
 				# Daemon listening
 				if state == "_listening":
@@ -458,6 +462,7 @@ class LEDs():
 				# other
 				elif state == "off":
 					self.off()
+					interior = OFF
 				elif state == "brightness":
 					if param > 255:
 						param = 255
@@ -478,8 +483,8 @@ class LEDs():
 				else:
 					self.idle(self.frame, color=Color(20, 20, 20), state_length=2)
 
-				# interior light always on
-				self.illuminate()
+				# set interior at the end
+				self.set_interior(interior)
 
 				self.frame += 1
 				time.sleep(self.frame_duration)
@@ -506,9 +511,9 @@ class LEDs():
 			self.strip.setBrightness(self.brightness)
 			self.strip.show();
 			self.update_required = False
-			# self.logger.info("flush")
+			# self.logger.info("state: %s |    flush  !!!", self.state)
 		else:
-			# self.logger.info("skipped flush, no changes")
+			# self.logger.info("state: %s | no flush   - ", self.state)
 			pass
 
 	def _get_frame_duration(self, fps):
