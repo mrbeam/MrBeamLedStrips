@@ -10,51 +10,87 @@ import time
 import sys
 import logging
 
-LED_COUNT = 46        # Number of LED pixels.
-GPIO_PIN = 18         # Pin #12 on the RPi. GPIO pin must support PWM
-LED_FREQ_HZ = 800000  # LED signal frequency in Hz (usually 800kHz)
-LED_DMA = 5           # DMA channel to use for generating signal (try 5)
-LED_BRIGHTNESS = 255  # 0..255 / Dim if too much power is used.
-LED_INVERT = False    # True to invert the signal (when using NPN transistor level shift)
-
-DEFAULT_FPS = 28
-
 # LED strip configuration:
 # Serial numbering of LEDs on the Mr Beam modules
 # order is top -> down
-LEDS_RIGHT_BACK = [0, 1, 2, 3, 4, 5, 6]
+LEDS_RIGHT_BACK =  [0, 1, 2, 3, 4, 5, 6]
 LEDS_RIGHT_FRONT = [7, 8, 9, 10, 11, 12, 13]
-LEDS_LEFT_FRONT = [32, 33, 34, 35, 36, 37, 38]
-LEDS_LEFT_BACK = [39, 40, 41, 42, 43, 44, 45]
-
+LEDS_LEFT_FRONT =  [32, 33, 34, 35, 36, 37, 38]
+LEDS_LEFT_BACK =   [39, 40, 41, 42, 43, 44, 45]
 # order is right -> left
-LEDS_INSIDE = [14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31]
+LEDS_INSIDE =      [14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31]
 
 # color definitions
-OFF = Color(0, 0, 0)
-WHITE = Color(255, 255, 255)
-RED = Color(255, 0, 0)
-GREEN = Color(0, 255, 0)
-BLUE = Color(0, 0, 255)
+OFF =    Color(0, 0, 0)
+WHITE =  Color(255, 255, 255)
+RED =    Color(255, 0, 0)
+GREEN =  Color(0, 255, 0)
+BLUE =   Color(0, 0, 255)
 YELLOW = Color(255, 200, 0)
 ORANGE = Color(226, 83, 3)
 
 
+
+def get_default_config():
+	# config file overrides these....
+	return dict(
+		led_count= 46,        # Number of LED pixels.
+		gpio_pin= 18,         # SPI:10, PWM: 18
+		led_freq_hz= 800000,  # LED signal frequency in Hz (usually 800kHz)
+		led_dma= 5,           # DMA channel to use for generating signal (try 5)
+		led_brigthness= 255,  # 0..255 / Dim if too much power is used.
+		led_invert= False,    # True to invert the signal (when using NPN transistor level shift)
+
+		# spread spectrum settings
+		spread_spectrum_enabled= False,
+		spread_spectrum_bandwidth= 180000,
+		spread_spectrum_channel_width= 9000,
+		spread_spectrum_hopping_delay_ms= 1000,
+
+		# default frames per second
+		frames_per_second= 28
+	)
+
+
+
 class LEDs():
-	def __init__(self):
+	def __init__(self, config):
+		self.config = config
 		self.logger = logging.getLogger(__name__)
+
+		print("LEDs staring up with config: %s" % self.config)
+		self.logger.info("LEDs staring up with config: %s", self.config)
+
 		# Create NeoPixel object with appropriate configuration.
-		self.strip = Adafruit_NeoPixel(LED_COUNT, GPIO_PIN, LED_FREQ_HZ, LED_DMA, LED_INVERT, LED_BRIGHTNESS)
-		self.strip.begin()  # Init the LED-strip
+		self._inti_strip(self.config['led_freq_hz'], self.config['spread_spectrum_enabled'],
+					spread_spectrum_bandwidth=self.config['spread_spectrum_bandwidth'],
+					spread_spectrum_channel_width=self.config['spread_spectrum_channel_width'],
+					spread_spectrum_hopping_delay_ms=self.config['spread_spectrum_hopping_delay_ms'])
 		self.state = "_listening"
 		self.past_states = []
 		signal.signal(signal.SIGTERM, self.clean_exit)  # switch off the LEDs on exit
 		self.job_progress = 0
-		self.brightness = LED_BRIGHTNESS
-		self.fps = DEFAULT_FPS
+		self.brightness = self.config['led_brigthness']
+		self.fps = self.config['frames_per_second']
 		self.frame_duration = self._get_frame_duration(self.fps)
 		self.update_required = False
 		self._last_interior = None
+
+	def _inti_strip(self, freq_hz, spread_spectrum_enabled,
+					spread_spectrum_bandwidth=None,
+					spread_spectrum_channel_width=None,
+					spread_spectrum_hopping_delay_ms=None):
+		self.strip = Adafruit_NeoPixel(self.config['led_count'], self.config['gpio_pin'],
+									   freq_hz=freq_hz,
+									   dma=self.config['led_dma'],
+									   invert=self.config['led_invert'],
+									   brightness=self.config['led_brigthness'])
+		self.strip.set_spread_spectrum_config(
+				 spread_spectrum_enabled=spread_spectrum_enabled,
+				 spread_spectrum_bandwidth=spread_spectrum_bandwidth,
+				 spread_spectrum_channel_width=spread_spectrum_channel_width,
+				 spread_spectrum_hopping_delay_ms=spread_spectrum_hopping_delay_ms)
+		self.strip.begin()  # Init the LED-strip
 
 	def change_state(self, state):
 		print("state change " + str(self.state) + " => " + str(state))
@@ -185,7 +221,7 @@ class LEDs():
 			for i in range(l):
 
 				bottom_up_idx = l-i-1
-				threshold = value / 100.0 * (l-1)
+				threshold = int(value) / 100.0 * (l-1)
 				if threshold < bottom_up_idx:
 					if i == c:
 						self._set_color(r[i], color_drip)
@@ -326,12 +362,36 @@ class LEDs():
 			return "warning"
 
 	def set_fps(self, fps):
-		if fps > 100: fps = 100
+		fps = int(fps)
 		if fps < 1: fps = 1
 		self.fps = fps
 		self.frame_duration = self._get_frame_duration(fps)
+		self.logger.info("set_fps() Changed animation speed: fps:%d (%s s/frame)" % (self.fps, self.frame_duration))
+
+	def spread_spectrum(self, params):
+		self.logger.info("spread_spectrum()")
+		enabled = params.pop(0)
+		if enabled == 'off':
+			self._inti_strip(LED_FREQ_HZ, False)
+			self.logger.info("spread_spectrum() off, led frequency is: %s", LED_FREQ_HZ)
+		elif enabled == 'on' and len(params) == 4:
+			try:
+				freq = int(params.pop(0))
+				bandwidth = int(params.pop(0))
+				channel_width = int(params.pop(0))
+				hopping_delay = int(params.pop(0))
+				self.logger.info("spread_spectrum() on: freq=%s, bandwidth=%s, channel_width=%s, hopping_delay=%s", freq, bandwidth, channel_width, hopping_delay)
+				self._inti_strip(freq, True,
+					spread_spectrum_bandwidth=bandwidth,
+					spread_spectrum_channel_width=channel_width,
+					spread_spectrum_hopping_delay_ms=hopping_delay)
+			except:
+				self.logger.exception("spread_spectrum() Exception while executing command %s", self.state)
+		else:
+			self.logger.info("spread_spectrum() invalid command or params. Usage: spread_spectrum:<on|off>:<center_frequency>:<bandwidth>:<channel_width>:<hopping_delay> eg: 'spread_spectrum:on:800000:180000:9000:1'")
 
 	def rollback(self, steps=1):
+		self._last_interior = None
 		if len(self.past_states) >= steps:
 			for x in range(0, steps):
 				old_state = self.past_states.pop()
@@ -356,15 +416,8 @@ class LEDs():
 					state_string = data
 
 				# split params from state string
-				s = state_string.split(':')
-				state = s[0]
-
-				param = 0
-				if len(s) > 1:
-					param = int(s[1])
-				if len(s) > 2:
-					user_fps = int(s[2])
-					self.set_fps(user_fps)
+				params = state_string.split(':')
+				state = params.pop(0)
 
 				# default interior color
 				interior = WHITE
@@ -429,12 +482,12 @@ class LEDs():
 				elif state == "PrintResumed":
 					self.progress(self.job_progress, self.frame)
 				elif state == "progress":
-					self.job_progress = param
-					self.progress(param, self.frame)
+					self.job_progress = params.pop(0)
+					self.progress(self.job_progress, self.frame)
 				elif state == "job_finished":
 					self.job_finished(self.frame)
 				elif state == "pause":
-					self.progress_pause(param, self.frame)
+					self.progress_pause(params.pop(0), self.frame)
 				elif state == "ReadyToPrint":
 					self.flash(self.frame, color=BLUE, state_length=2)
 				elif state == "ReadyToPrintCancel":
@@ -442,15 +495,15 @@ class LEDs():
 
 				# Slicing
 				elif state == "SlicingStarted":
-			 		self.progress(param, self.frame, color_done=BLUE, color_drip=WHITE, state_length=3)
+			 		self.progress(params.pop(0), self.frame, color_done=BLUE, color_drip=WHITE, state_length=3)
 				elif state == "SlicingDone":
-					self.progress(param, self.frame, color_done=BLUE, color_drip=WHITE, state_length=3)
+					self.progress(params.pop(0), self.frame, color_done=BLUE, color_drip=WHITE, state_length=3)
 				elif state == "SlicingCancelled":
 					self.idle(self.frame)
 				elif state == "SlicingFailed":
 					self.fade_off()
 				elif state == "SlicingProgress":
-					self.progress(param, self.frame, color_done=BLUE, color_drip=WHITE, state_length=3)
+					self.progress(params.pop(0), self.frame, color_done=BLUE, color_drip=WHITE, state_length=3)
 
 				# Settings
 				elif state == "SettingsUpdated":
@@ -464,11 +517,12 @@ class LEDs():
 					self.off()
 					interior = OFF
 				elif state == "brightness":
-					if param > 255:
-						param = 255
-					elif param < 0:
-						param = 0
-					self.brightness = param
+					bright = params.pop(0)
+					if bright > 255:
+						bright = 255
+					elif bright < 0:
+						bright = 0
+					self.brightness = bright
 					self.update_required = True
 				elif state == "all_red":
 					self.static_color(RED)
@@ -477,8 +531,10 @@ class LEDs():
 				elif state == "all_blue":
 					self.static_color(BLUE)
 				elif state == "fps":
-					self.set_fps(param)
-					self.logger.info("Changed animation speed: fps:%d (%s s/frame)" % (self.fps, self.frame_duration))
+					self.set_fps(params.pop(0))
+					self.rollback()
+				elif state == "spread_spectrum":
+					self.spread_spectrum(params)
 					self.rollback()
 				else:
 					self.idle(self.frame, color=Color(20, 20, 20), state_length=2)
@@ -517,5 +573,5 @@ class LEDs():
 			pass
 
 	def _get_frame_duration(self, fps):
-		return (1.0 / fps) if fps>0 else 1.0
+		return (1.0 / int(fps)) if int(fps)>0 else 1.0
 			
