@@ -43,6 +43,7 @@ def get_default_config():
 
 		# spread spectrum settings
 		spread_spectrum_enabled= False,
+		spread_spectrum_random= True,
 		spread_spectrum_bandwidth= 180000,
 		spread_spectrum_channel_width= 9000,
 		spread_spectrum_hopping_delay_ms= 1000,
@@ -62,7 +63,9 @@ class LEDs():
 		self.logger.info("LEDs staring up with config: %s", self.config)
 
 		# Create NeoPixel object with appropriate configuration.
-		self._inti_strip(self.config['led_freq_hz'], self.config['spread_spectrum_enabled'],
+		self._inti_strip(self.config['led_freq_hz'],
+					self.config['spread_spectrum_enabled'],
+					spread_spectrum_random=self.config['spread_spectrum_random'],
 					spread_spectrum_bandwidth=self.config['spread_spectrum_bandwidth'],
 					spread_spectrum_channel_width=self.config['spread_spectrum_channel_width'],
 					spread_spectrum_hopping_delay_ms=self.config['spread_spectrum_hopping_delay_ms'])
@@ -77,16 +80,19 @@ class LEDs():
 		self._last_interior = None
 
 	def _inti_strip(self, freq_hz, spread_spectrum_enabled,
+					spread_spectrum_random=False,
 					spread_spectrum_bandwidth=None,
 					spread_spectrum_channel_width=None,
 					spread_spectrum_hopping_delay_ms=None):
-		self.strip = Adafruit_NeoPixel(self.config['led_count'], self.config['gpio_pin'],
+		self.strip = Adafruit_NeoPixel(self.config['led_count'],
+									   self.config['gpio_pin'],
 									   freq_hz=freq_hz,
 									   dma=self.config['led_dma'],
 									   invert=self.config['led_invert'],
 									   brightness=self.config['led_brigthness'])
 		self.strip.set_spread_spectrum_config(
 				 spread_spectrum_enabled=spread_spectrum_enabled,
+				 spread_spectrum_random=spread_spectrum_random,
 				 spread_spectrum_bandwidth=spread_spectrum_bandwidth,
 				 spread_spectrum_channel_width=spread_spectrum_channel_width,
 				 spread_spectrum_hopping_delay_ms=spread_spectrum_hopping_delay_ms)
@@ -374,14 +380,16 @@ class LEDs():
 		if enabled == 'off':
 			self._inti_strip(LED_FREQ_HZ, False)
 			self.logger.info("spread_spectrum() off, led frequency is: %s", LED_FREQ_HZ)
-		elif enabled == 'on' and len(params) == 4:
+		elif enabled == 'on' and len(params) in (4,5):
 			try:
 				freq = int(params.pop(0))
 				bandwidth = int(params.pop(0))
 				channel_width = int(params.pop(0))
 				hopping_delay = int(params.pop(0))
-				self.logger.info("spread_spectrum() on: freq=%s, bandwidth=%s, channel_width=%s, hopping_delay=%s", freq, bandwidth, channel_width, hopping_delay)
+				random = params.pop(0).startswith('r') if len(params) > 0 else False
+				self.logger.info("spread_spectrum() on: freq=%s, bandwidth=%s, channel_width=%s, hopping_delay=%s, random:%s", freq, bandwidth, channel_width, hopping_delay, random)
 				self._inti_strip(freq, True,
+					spread_spectrum_random=random,
 					spread_spectrum_bandwidth=bandwidth,
 					spread_spectrum_channel_width=channel_width,
 					spread_spectrum_hopping_delay_ms=hopping_delay)
