@@ -56,28 +56,32 @@ def get_default_config():
 
 class LEDs():
 	def __init__(self, config):
-		self.config = config
-		self.logger = logging.getLogger(__name__)
+		try:
+			self.config = config
+			self.logger = logging.getLogger(__name__)
+			self.dfghjkjhgfdfghj()
+			print("LEDs staring up with config: %s" % self.config)
+			self.logger.info("LEDs staring up with config: %s", self.config)
 
-		print("LEDs staring up with config: %s" % self.config)
-		self.logger.info("LEDs staring up with config: %s", self.config)
-
-		# Create NeoPixel object with appropriate configuration.
-		self._inti_strip(self.config['led_freq_hz'],
-					self.config['spread_spectrum_enabled'],
-					spread_spectrum_random=self.config['spread_spectrum_random'],
-					spread_spectrum_bandwidth=self.config['spread_spectrum_bandwidth'],
-					spread_spectrum_channel_width=self.config['spread_spectrum_channel_width'],
-					spread_spectrum_hopping_delay_ms=self.config['spread_spectrum_hopping_delay_ms'])
-		self.state = "_listening"
-		self.past_states = []
-		signal.signal(signal.SIGTERM, self.clean_exit)  # switch off the LEDs on exit
-		self.job_progress = 0
-		self.brightness = self.config['led_brigthness']
-		self.fps = self.config['frames_per_second']
-		self.frame_duration = self._get_frame_duration(self.fps)
-		self.update_required = False
-		self._last_interior = None
+			# Create NeoPixel object with appropriate configuration.
+			self._inti_strip(self.config['led_freq_hz'],
+						self.config['spread_spectrum_enabled'],
+						spread_spectrum_random=self.config['spread_spectrum_random'],
+						spread_spectrum_bandwidth=self.config['spread_spectrum_bandwidth'],
+						spread_spectrum_channel_width=self.config['spread_spectrum_channel_width'],
+						spread_spectrum_hopping_delay_ms=self.config['spread_spectrum_hopping_delay_ms'])
+			self.logger.info("LEDs strip initialized")
+			self.state = "_listening"
+			self.past_states = []
+			signal.signal(signal.SIGTERM, self.clean_exit)  # switch off the LEDs on exit
+			self.job_progress = 0
+			self.brightness = self.config['led_brigthness']
+			self.fps = self.config['frames_per_second']
+			self.frame_duration = self._get_frame_duration(self.fps)
+			self.update_required = False
+			self._last_interior = None
+		except:
+			self.logger.exception("LEDs init() exception:")
 
 	def _inti_strip(self, freq_hz, spread_spectrum_enabled,
 					spread_spectrum_random=False,
