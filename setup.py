@@ -176,8 +176,7 @@ def params():
 
     dependency_links = []
     install_requires = [
-        "PyYaml",
-        "rpi_ws281x"
+        "PyYaml"
     ]
 
     entry_points = {
