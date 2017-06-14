@@ -36,7 +36,8 @@ def get_default_config():
 	return dict(
 		led_count = 46,        # Number of LED pixels.
 		gpio_pin = 18,         # SPI:10, PWM: 18
-		led_freq_hz = 1200000, # LED signal frequency in Hz (usually 800kHz)
+		led_freq_hz = 800000, # LED signal frequency in Hz (usually 800kHz)
+		# led_freq_hz = 1200000, # for spreading on SPI pin....
 		led_dma = 5,           # DMA channel to use for generating signal (try 5)
 		led_brigthness = 255,  # 0..255 / Dim if too much power is used.
 		led_invert = False,    # True to invert the signal (when using NPN transistor level shift)
