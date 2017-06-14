@@ -1,4 +1,28 @@
+# MeBeam LED Deamon Config File
+
 # control socket to listen on
 socket: /var/run/mrbeam_ledstrips.sock
+
+# general LED configuration settings
+led_count: 46               # Number of LED pixels.
+gpio_pin: 18                # SPI:10, PWM: 18
+led_freq_hz: 800000        # LED signal frequency in Hz (usually 800kHz)
+#led_freq_hz: 1200000        # for spreading on SPI pin....
+led_dma: 5                  # DMA channel to use for generating signal (try 5)
+led_brigthness: 255         # 0..255 / Dim if too much power is used.
+led_invert: false           # True to invert the signal (when using NPN transistor level shift)
+
+# default frames per second
+frames_per_second: 28       # CLI command: fps:28
+
+# spread spectrum settings (gpio_pin must be 10 (SPI))
+spread_spectrum_enabled: true
+spread_spectrum_random: true
+spread_spectrum_bandwidth: 200000
+spread_spectrum_channel_width: 9000
+spread_spectrum_hopping_delay_ms: 50
+# CLI command: spread_spectrum:<on|off>:<center_frequency>:<bandwidth>:<channel_width>:<hopping_delay>[:random]
+# example:
+#   $ mrbeam_ledstrips_cli spread_spectrum:on:800000:180000:9000:1000:rand
 
 

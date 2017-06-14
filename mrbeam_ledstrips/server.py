@@ -7,12 +7,12 @@ import threading
 import signal
 import yaml
 import os
-from .state_animations import LEDs
+from .state_animations import LEDs, get_default_config
 
 
 class Server(object):
 
-	def __init__(self, server_address=None):
+	def __init__(self, server_address, led_config):
 		self.logger = logging.getLogger(__name__)
 
 		def exception_logger(exc_type, exc_value, exc_tb):
@@ -25,7 +25,7 @@ class Server(object):
 		# we need to make sure that client messages and link events are never handled concurrently, so we synchronize via
 		# this mutex
 		self.mutex = threading.RLock()
-		self.leds = LEDs()
+		self.leds = LEDs(led_config)
 		print("initialized")
 		signal.signal(signal.SIGTERM, self.leds.clean_exit) # switch off the LEDs on exit
 
@@ -111,9 +111,8 @@ def parse_configfile(configfile):
 
 	mandatory = ("socket")
 
-	default_config = dict(
-		socket="/var/run/mrbeam_ledstrips.sock"
-	)
+	default_config = get_default_config()
+	default_config['socket'] = "/var/run/mrbeam_ledstrips.sock"
 	
 	try:
 		with open(configfile, "r") as f:
@@ -141,10 +140,7 @@ def parse_configfile(configfile):
 
 
 def start_server(config):
-	kwargs = dict(
-				  server_address=config["socket"],
-				  )
-	s = Server(** kwargs)
+	s = Server(config["socket"], config)
 	s.start()
 
 
