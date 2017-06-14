@@ -59,7 +59,6 @@ class LEDs():
 		try:
 			self.config = config
 			self.logger = logging.getLogger(__name__)
-			self.dfghjkjhgfdfghj()
 			print("LEDs staring up with config: %s" % self.config)
 			self.logger.info("LEDs staring up with config: %s", self.config)
 
@@ -81,6 +80,7 @@ class LEDs():
 			self.update_required = False
 			self._last_interior = None
 		except:
+			# this doesn't appear in the logs. Dunno why....
 			self.logger.exception("LEDs init() exception:")
 
 	def _inti_strip(self, freq_hz, spread_spectrum_enabled,
