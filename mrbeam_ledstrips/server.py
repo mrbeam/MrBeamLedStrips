@@ -5,6 +5,8 @@ import logging
 import sys
 import threading
 import signal
+import code
+import traceback
 import yaml
 import os
 from .state_animations import LEDs, COMMANDS, get_default_config
@@ -18,6 +20,7 @@ class Server(object):
 			self.logger.error("Uncaught exception", exc_info=(exc_type, exc_value, exc_tb))
 
 		sys.excepthook = exception_logger
+		self.listen()
 
 		self.server_address = server_address
 
@@ -27,6 +30,25 @@ class Server(object):
 		self.leds = LEDs(led_config)
 		print("initialized")
 		signal.signal(signal.SIGTERM, self.leds.clean_exit)  # switch off the LEDs on exit
+
+	# https://stackoverflow.com/a/133384/2631798
+	def debug(self, sig, frame):
+		"""Interrupt running process, and provide a python prompt for
+		interactive debugging."""
+		self.logger.info('debug() frame: %s', traceback.extract_stack())
+
+		# this doesn't work for me so far....
+		d = {'_frame': frame}  # Allow access to frame object.
+		d.update(frame.f_globals)  # Unless shadowed by global
+		d.update(frame.f_locals)
+
+		i = code.InteractiveConsole(d)
+		message = "Signal received : entering python shell.\nTraceback:\n"
+		message += ''.join(traceback.format_stack(frame))
+		i.interact(message)
+
+	def listen(self):
+		signal.signal(signal.SIGUSR1, self.debug)  # Register handler
 
 	def _socket_monitor(self, server_address, callback):
 
@@ -82,6 +104,13 @@ class Server(object):
 					except:
 						pass
 		except KeyboardInterrupt:
+			pass
+			# sock.close()
+			# os.unlink(server_address)
+			# self.leds.clean_exit(signal.SIGTERM, None)
+		except:
+			self.logger.exception("Exception in socket monitor: ")
+		finally:
 			sock.close()
 			os.unlink(server_address)
 			self.leds.clean_exit(signal.SIGTERM, None)
