@@ -6,6 +6,7 @@ from __future__ import division
 
 import signal
 from neopixel import *
+import _rpi_ws281x as ws
 import time
 import sys
 import logging
@@ -136,7 +137,8 @@ class LEDs():
 									   freq_hz=freq_hz,
 									   dma=self.config['led_dma'],
 									   invert=self.config['led_invert'],
-									   brightness=self.config['led_brigthness'])
+									   brightness=self.config['led_brigthness'],
+									   strip_type=ws.SK6812_STRIP)
 		self.strip.set_spread_spectrum_config(
 				 spread_spectrum_enabled=spread_spectrum_enabled,
 				 spread_spectrum_random=spread_spectrum_random,
