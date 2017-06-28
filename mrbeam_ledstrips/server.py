@@ -7,7 +7,7 @@ import threading
 import signal
 import yaml
 import os
-from .state_animations import LEDs, get_default_config
+from .state_animations import LEDs, COMMANDS, get_default_config
 
 
 class Server(object):
@@ -119,6 +119,11 @@ class Server(object):
 
 		thr = threading.enumerate()
 		info.append("THREADS: ({num}) {threads}".format(num=len(thr), threads=thr))
+
+		my_commands = []
+		for c in COMMANDS:
+			my_commands.append(COMMANDS[c][0])
+		info.append("COMMANDS: {}".format(' '.join(my_commands)))
 
 		return "\n".join(info)
 

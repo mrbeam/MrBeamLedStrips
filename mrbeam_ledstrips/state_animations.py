@@ -29,6 +29,48 @@ BLUE =   Color(0, 0, 255)
 YELLOW = Color(255, 200, 0)
 ORANGE = Color(226, 83, 3)
 
+COMMANDS = dict(
+	UNKNOWN                    = ['unknown'],
+	ON                         = ['on', 'all_on'],
+	OFF                        = ['off', 'all_off'],
+	BRIGHTNESS                 = ['brightness'],
+	ROLLBACK                   = ['rollback'],
+	FPS                        = ['fps'],
+	SPREAD_SPECTRUM            = ['spread_spectrum'],
+
+	LISTENING                  = ['Listening', '_listening', 'listening'],
+	STARTUP                    = ['Startup'],
+	CLIENT_OPENED              = ['ClientOpened'],
+	CLIENT_CLOSED              = ['ClientClosed'],
+	ERROR                      = ['Error'],
+	SHUTDOWN                   = ['Shutdown'],
+	SHUTDOWN_PREPARE           = ['ShutdownPrepare'],
+	SHUTDOWN_PREPARE_CANCEL    = ['ShutdownPrepareCancel'],
+	UPLOAD                     = ['Upload'],
+	PRINT_STARTED              = ['PrintStarted'],
+	PRINT_DONE                 = ['PrintDone'],
+	PRINT_CANCELLED            = ['PrintCancelled'],
+	PRINT_PAUSED               = ['PrintPaused'],
+	PRINT_PAUSED_TIMEOUT       = ['PrintPausedTimeout'],
+	PRINT_PAUSED_TIMEOUT_BLOCK = ['PrintPausedTimeoutBlock'],
+	PRINT_RESUMED              = ['PrintResumed'],
+	PROGRESS                   = ['Progress', 'progress'],
+	JOB_FINISHED               = ['JobFinished', 'job_finished'],
+	PAUSE                      = ['Pause', 'pause'],
+	READY_TO_PRINT             = ['ReadyToPrint'],
+	READY_TO_PRINT_CANCEL      = ['ReadyToPrintCancel'],
+	SLICING_STARTED            = ['SlicingStarted'],
+	SLICING_DONE               = ['SlicingDone'],
+	SLICING_CANCELLED          = ['SlicingCancelled'],
+	SLICING_FAILED             = ['SlicingFailed'],
+	SLICING_PROGRESS           = ['SlicingProgress', 'slicing_progress'],
+	SETTINGS_UPDATED           = ['SettingsUpdated'],
+
+	RED                        = ['red', 'all_red'],
+	GREEN                      = ['green', 'all_green'],
+	BLUE                       = ['blue', 'all_blue'],
+)
+
 
 
 def get_default_config():
@@ -71,7 +113,7 @@ class LEDs():
 						spread_spectrum_channel_width=self.config['spread_spectrum_channel_width'],
 						spread_spectrum_hopping_delay_ms=self.config['spread_spectrum_hopping_delay_ms'])
 			self.logger.info("LEDs strip initialized")
-			self.state = "_listening"
+			self.state = COMMANDS['LISTENING'][0]
 			self.past_states = []
 			signal.signal(signal.SIGTERM, self.clean_exit)  # switch off the LEDs on exit
 			self.job_progress = 0
@@ -418,7 +460,7 @@ class LEDs():
 			if len(self.past_states) >= 1:
 				self.state = self.past_states.pop()
 			else:
-				self.state = "_listening"
+				self.state = COMMANDS['LISTENING'][0]
 			self.logger.warn("Rolleback: fallback to %s", self.state)
 
 	def loop(self):
@@ -433,106 +475,106 @@ class LEDs():
 
 				# split params from state string
 				params = state_string.split(':')
-				state = params.pop(0)
+				my_state = params.pop(0)
 
 				# default interior color
 				interior = WHITE
 
 				# Daemon listening
-				if state == "_listening":
+				if my_state in COMMANDS['LISTENING']:
 					self.listening(self.frame)
 
 				# test purposes
-				elif state == "all_on":
+				elif my_state in COMMANDS['ON']:
 					self.all_on()
 
-				elif state == "rollback":
+				elif my_state in COMMANDS['ROLLBACK']:
 					self.rollback(2)
 
 				# Server
-				elif state == "Startup":
+				elif my_state in COMMANDS['STARTUP']:
 					self.listening(self.frame)
 					# self.idle(self.frame, color=Color(20, 20, 20), fps=10)
-				elif state == "ClientOpened":
+				elif my_state in COMMANDS['CLIENT_OPENED']:
 					self.idle(self.frame)
-				elif state == "ClientClosed":
+				elif my_state in COMMANDS['CLIENT_CLOSED']:
 					self.listening(self.frame)
 					# self.idle(self.frame, color=Color(20, 20, 20), fps=10)
 
 				# Machine
-				# elif state == "Connected":
+				# elif my_state == "Connected":
 				# 	self.idle(self.frame)
-				# elif state == "Disconnected":
+				# elif my_state == "Disconnected":
 				# 	self.idle(self.frame, fps=10)
-				elif state == "Error":
+				elif my_state in COMMANDS['ERROR']:
 					self.error(self.frame)
-				elif state == "ShutdownPrepare":
+				elif my_state in COMMANDS['SHUTDOWN_PREPARE']:
 					self.shutdown_prepare(self.frame)
-				elif state == "Shutdown":
+				elif my_state in COMMANDS['SHUTDOWN']:
 					self.shutdown(self.frame)
-				elif state == "ShutdownPrepareCancel":
+				elif my_state in COMMANDS['SHUTDOWN_PREPARE_CANCEL']:
 					self.rollback(2)
 
 				# File Handling
-				elif state == "Upload":
+				elif my_state in COMMANDS['UPLOAD']:
 					self.upload(self.frame)
 
 				# Laser Job
-				elif state == "PrintStarted":
+				elif my_state in COMMANDS['PRINT_STARTED']:
 					self.progress(0, self.frame)
-				elif state == "PrintDone":
+				elif my_state in COMMANDS['PRINT_DONE']:
 					self.job_progress = 0
 					self.job_finished(self.frame)
-				elif state == "PrintCancelled":
+				elif my_state in COMMANDS['PRINT_CANCELLED']:
 					self.job_progress = 0
 					self.fade_off()
-				elif state == "PrintPaused":
+				elif my_state in COMMANDS['PRINT_PAUSED']:
 					self.progress_pause(self.job_progress, self.frame)
-				elif state == "PrintPausedTimeout":
+				elif my_state in COMMANDS['PRINT_PAUSED_TIMEOUT']:
 					self.progress_pause(self.job_progress, self.frame, False)
-				elif state == "PrintPausedTimeoutBlock":
+				elif my_state in COMMANDS['PRINT_PAUSED_TIMEOUT_BLOCK']:
 					if self.frame > self.fps:
-						self.change_state("PrintPausedTimeout")
+						self.change_state(COMMANDS['PRINT_PAUSED_TIMEOUT'][0])
 					else:
 						self.progress_pause(self.job_progress, self.frame, False, color_drip=RED)
-				elif state == "PrintResumed":
+				elif my_state in COMMANDS['PRINT_RESUMED']:
 					self.progress(self.job_progress, self.frame)
-				elif state == "progress":
+				elif my_state in COMMANDS['PROGRESS']:
 					self.job_progress = params.pop(0)
 					self.progress(self.job_progress, self.frame)
-				elif state == "job_finished":
+				elif my_state in COMMANDS['JOB_FINISHED']:
 					self.job_finished(self.frame)
-				elif state == "pause":
+				elif my_state in COMMANDS['PAUSE']:
 					self.progress_pause(params.pop(0), self.frame)
-				elif state == "ReadyToPrint":
+				elif my_state in COMMANDS['READY_TO_PRINT']:
 					self.flash(self.frame, color=BLUE, state_length=2)
-				elif state == "ReadyToPrintCancel":
+				elif my_state in COMMANDS['READY_TO_PRINT_CANCEL']:
 					self.idle(self.frame)
 
 				# Slicing
-				elif state == "SlicingStarted":
+				elif my_state in COMMANDS['SLICING_STARTED']:
 			 		self.progress(params.pop(0), self.frame, color_done=BLUE, color_drip=WHITE, state_length=3)
-				elif state == "SlicingDone":
+				elif my_state in COMMANDS['SLICING_DONE']:
 					self.progress(params.pop(0), self.frame, color_done=BLUE, color_drip=WHITE, state_length=3)
-				elif state == "SlicingCancelled":
+				elif my_state in COMMANDS['SLICING_CANCELLED']:
 					self.idle(self.frame)
-				elif state == "SlicingFailed":
+				elif my_state in COMMANDS['SLICING_FAILED']:
 					self.fade_off()
-				elif state == "SlicingProgress":
+				elif my_state in COMMANDS['SLICING_PROGRESS']:
 					self.progress(params.pop(0), self.frame, color_done=BLUE, color_drip=WHITE, state_length=3)
 
 				# Settings
-				elif state == "SettingsUpdated":
+				elif my_state in COMMANDS['SETTINGS_UPDATED']:
 					if self.frame > 50:
 						self.rollback()
 					else:
 						self.flash(self.frame, color=WHITE, state_length=1)
 
 				# other
-				elif state == "off":
+				elif my_state in COMMANDS['OFF']:
 					self.off()
 					interior = OFF
-				elif state == "brightness":
+				elif my_state in COMMANDS['BRIGHTNESS']:
 					bright = params.pop(0)
 					if bright > 255:
 						bright = 255
@@ -540,20 +582,20 @@ class LEDs():
 						bright = 0
 					self.brightness = bright
 					self.update_required = True
-				elif state == "all_red":
+				elif my_state in COMMANDS['RED']:
 					self.static_color(RED)
-				elif state == "all_green":
+				elif my_state in COMMANDS['GREEN']:
 					self.static_color(GREEN)
-				elif state == "all_blue":
+				elif my_state in COMMANDS['BLUE']:
 					self.static_color(BLUE)
-				elif state == "fps":
+				elif my_state in COMMANDS['FPS']:
 					self.set_fps(params.pop(0))
 					self.rollback()
-				elif state == "spread_spectrum":
+				elif my_state in COMMANDS['SPREAD_SPECTRUM']:
 					self.spread_spectrum(params)
 					self.rollback()
 				else:
-					self.state = "unknown"
+					self.my_state = COMMANDS['UNKNOWN'][0]
 					self.idle(self.frame, color=Color(20, 20, 20), state_length=2)
 
 				# set interior at the end
