@@ -9,6 +9,7 @@ from neopixel import *
 import _rpi_ws281x as ws
 import time
 import sys
+import threading
 import logging
 
 # LED strip configuration:
@@ -32,6 +33,7 @@ ORANGE = Color(226, 83, 3)
 
 COMMANDS = dict(
 	UNKNOWN                    = ['unknown'],
+	DEBUG_STOP                 = ['DebugStop'],
 	ON                         = ['on', 'all_on'],
 	OFF                        = ['off', 'all_off'],
 	BRIGHTNESS                 = ['brightness'],
@@ -595,6 +597,11 @@ class LEDs():
 					self.rollback()
 				elif my_state in COMMANDS['SPREAD_SPECTRUM']:
 					self.spread_spectrum(params)
+					self.rollback()
+				elif my_state in COMMANDS['DEBUG_STOP']:
+					self.logger.info('DebugStop: going to sleep. Thread: %s', threading.current_thread())
+					time.sleep(10000)
+					self.logger.info('DebugStop: Woke up!!!. Thread: %s', threading.current_thread())
 					self.rollback()
 				else:
 					self.my_state = COMMANDS['UNKNOWN'][0]

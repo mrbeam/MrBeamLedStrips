@@ -50,6 +50,7 @@ class Server(object):
 			while True:
 				self.logger.info('Waiting for connection on socket...')
 				connection, client_address = sock.accept()
+				self.logger.info('Client connected...')
 
 				# with self.mutex:
 				try:
