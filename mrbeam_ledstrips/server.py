@@ -11,7 +11,6 @@ from .state_animations import LEDs, get_default_config
 
 
 class Server(object):
-
 	def __init__(self, server_address, led_config):
 		self.logger = logging.getLogger(__name__)
 
@@ -27,10 +26,10 @@ class Server(object):
 		self.mutex = threading.RLock()
 		self.leds = LEDs(led_config)
 		print("initialized")
-		signal.signal(signal.SIGTERM, self.leds.clean_exit) # switch off the LEDs on exit
+		signal.signal(signal.SIGTERM, self.leds.clean_exit)  # switch off the LEDs on exit
 
 	def _socket_monitor(self, server_address, callback):
-		
+
 		import socket
 		import os
 		try:
@@ -49,44 +48,38 @@ class Server(object):
 
 		try:
 			while True:
-					self.logger.info('Waiting for connection on socket...')
-					connection, client_address = sock.accept()
+				self.logger.info('Waiting for connection on socket...')
+				connection, client_address = sock.accept()
 
 				# with self.mutex:
+				try:
+					buffer = []
+					while True:
+						chunk = connection.recv(16)
+						if chunk:
+							# self.logger.info('Recv: %r' % chunk)
+							buffer.append(chunk)
+							if chunk.endswith('\x00') or chunk.endswith("\n"):
+								break
+
+					data = ''.join(buffer).strip()[:-1]
+
+					ret = False
+					result = 'unknown event'
+
+					self.logger.info('Command: %s' % data)
+					response = callback(data)
+
+					self.logger.info('Send: %s' % str(response))
+					connection.sendall(str(response) + '\x00')
+
+				except:
+					self.logger.exception('Got an error while processing message from client, aborting')
+
 					try:
-						buffer = []
-						while True:
-							chunk = connection.recv(16)
-							if chunk:
-								self.logger.info('Recv: %r' % chunk)
-								buffer.append(chunk)
-								if chunk.endswith('\x00') or chunk.endswith("\n"):
-									break
-
-						data = ''.join(buffer).strip()[:-1]
-
-						ret = False
-						result = 'unknown event'
-
-						self.logger.info('data: %s' % data)
-						message = data
-						ret, result = callback(message)
-
-						if ret:
-							response = "OK"
-						else:
-							response = "Error:"+result
-
-						self.logger.info('Send: %s' % str(response))
-						connection.sendall(str(response) + '\x00')
-
+						connection.sendall(str(ErrorResponse("error while processing message from client")) + '\x00')
 					except:
-						self.logger.exception('Got an error while processing message from client, aborting')
-
-						try:
-							connection.sendall(str(ErrorResponse("error while processing message from client")) + '\x00')
-						except:
-							pass
+						pass
 		except KeyboardInterrupt:
 			sock.close()
 			os.unlink(server_address)
@@ -96,13 +89,38 @@ class Server(object):
 		self.logger.info("### Starting up ledstrip server...")
 		self.animation = threading.Thread(target=self.leds.loop, kwargs=dict())
 		self.animation.daemon = True
+		self.animation.name = "StateAnimations"
 		self.animation.start()
 		self._socket_monitor(self.server_address, callback=self.on_state_change)
-		
+
 	def on_state_change(self, state):
-		print("new State: "+state)
-		self.leds.change_state(state)
-		return True, None
+		response = "ERRROR"
+		if (state in ('info', '?')):
+			info = self.get_info()
+			self.logger.info(info)
+			response = info
+		else:
+			response = self.leds.change_state(state)
+		return response
+
+	def get_info(self):
+		info = ["INFO: "]
+
+		info.append(
+			"LEDS: state:{state}, frame:{frame}, fps:{fps}, frame_duration:{frame_duration}, job_progress:{job_progress}, brightness:{brightness}".format(
+				state=self.leds.state,
+				frame=self.leds.frame,
+				fps=self.leds.fps,
+				frame_duration=self.leds.frame_duration,
+				job_progress=self.leds.job_progress,
+				brightness=self.leds.brightness))
+
+		info.append("LEDS config: {}".format(self.leds.config))
+
+		thr = threading.enumerate()
+		info.append("THREADS: ({num}) {threads}".format(num=len(thr), threads=thr))
+
+		return "\n".join(info)
 
 
 def parse_configfile(configfile):
@@ -113,7 +131,7 @@ def parse_configfile(configfile):
 
 	default_config = get_default_config()
 	default_config['socket'] = "/var/run/mrbeam_ledstrips.sock"
-	
+
 	try:
 		with open(configfile, "r") as f:
 			config = yaml.safe_load(f)
@@ -149,12 +167,15 @@ def server():
 
 	parser.add_argument("-c", "--config", default="/etc/mrbeam_ledstrips.yaml", help="Config file location")
 	parser.add_argument("-f", "--foreground", action="store_true", help="Run in foreground instead of as daemon")
-	parser.add_argument("-p", "--pid", default="/var/run/mrbeam_ledstrips.pid", help="Pidfile to use for demonizing, defaults to /var/run/ledstrips.pid")
+	parser.add_argument("-p", "--pid", default="/var/run/mrbeam_ledstrips.pid",
+	                    help="Pidfile to use for demonizing, defaults to /var/run/ledstrips.pid")
 	parser.add_argument("-d", "--debug", action="store_true", help="Enable debug logging")
 	parser.add_argument("-q", "--quiet", action="store_true", help="Disable console output")
 	parser.add_argument("-v", "--version", action="store_true", help="Display version information and exit")
-	parser.add_argument("--logfile", default="/var/log/mrbeam_ledstrips.log", help="Location of logfile, defaults to /var/log/ledstrips.log")
-	parser.add_argument("--daemon", choices=["stop", "status"], help="Control the ledstrips daemon, supported arguments are 'stop' and 'status'.")
+	parser.add_argument("--logfile", default="/var/log/mrbeam_ledstrips.log",
+	                    help="Location of logfile, defaults to /var/log/ledstrips.log")
+	parser.add_argument("--daemon", choices=["stop", "status"],
+	                    help="Control the ledstrips daemon, supported arguments are 'stop' and 'status'.")
 
 	args = parser.parse_args()
 
@@ -180,15 +201,16 @@ def server():
 					pid = f.readline().strip()
 
 				if pid:
-						if os.path.exists(os.path.join("/proc", pid)):
-							print("Running (Pid %s)" % pid)
-						sys.exit(0)
-			print ("Not running")
+					if os.path.exists(os.path.join("/proc", pid)):
+						print("Running (Pid %s)" % pid)
+					sys.exit(0)
+			print("Not running")
 			sys.exit(0)
 
 	# configure logging
 	logging_format = '%(asctime)s - %(name)s - %(levelname)s - %(message)s'
-	logging.basicConfig(format=logging_format, filename=args.logfile, level=logging.DEBUG if args.debug else logging.INFO)
+	logging.basicConfig(format=logging_format, filename=args.logfile,
+	                    level=logging.DEBUG if args.debug else logging.INFO)
 	if not args.quiet:
 		console_handler = logging.StreamHandler()
 		console_handler.formatter = logging.Formatter(fmt='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
@@ -213,7 +235,7 @@ def server():
 	# validate command line
 	if not config["socket"]:
 		parser.info("Using Socket default address, overwrite with config file")
-		#config["socket"] = ""
+	# config["socket"] = ""
 
 	if args.foreground:
 		# start directly instead of as daemon
@@ -228,6 +250,7 @@ def server():
 				start_server(config)
 
 		daemon = ServerDaemon(pidfile=args.pid, umask=002)
+		name = "Server"
 		daemon.start()
 
 

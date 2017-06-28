@@ -24,6 +24,7 @@ def client():
 	s = None  # socket object
 
 	s = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
+	s.settimeout(2)
 	try:
 		s.connect(socket_file)
 	except socket.error as msg:
@@ -33,9 +34,9 @@ def client():
 
 	try:
 		s.send(state+'\x00')
-		print "sent state " + state
+		print "> " + state
 		data = s.recv(1024)
-		print "recv: " + data
+		print "< " + data
 		s.close()		
 	finally:
 		s.close()

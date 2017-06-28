@@ -103,15 +103,18 @@ class LEDs():
 				 spread_spectrum_hopping_delay_ms=spread_spectrum_hopping_delay_ms)
 		self.strip.begin()  # Init the LED-strip
 
-	def change_state(self, state):
-		print("state change " + str(self.state) + " => " + str(state))
-		self.logger.info("state change " + str(self.state) + " => " + str(state))
-		if self.state != state:
+	def change_state(self, nu_state):
+		old_state = self.state
+		print("state change " + str(self.state) + " => " + str(nu_state))
+		self.logger.info("state change " + str(self.state) + " => " + str(nu_state))
+		if self.state != nu_state:
 			self.past_states.append(self.state)
 			while len(self.past_states) > 10:
 				self.past_states.pop(0)
-		self.state = state
+		self.state = nu_state
 		self.frame = 0
+		time.sleep(0.2)
+		return "State change: '{old}' -> '{nu}' - current: '{current}'".format(old=old_state, nu=nu_state, current=self.state)
 
 	def clean_exit(self, signal, msg):
 		print 'shutting down, signal was: %s' % signal
@@ -550,6 +553,7 @@ class LEDs():
 					self.spread_spectrum(params)
 					self.rollback()
 				else:
+					self.state = "unknown"
 					self.idle(self.frame, color=Color(20, 20, 20), state_length=2)
 
 				# set interior at the end
@@ -564,7 +568,7 @@ class LEDs():
 		except:
 			self.logger.exception("Some Exception in animation loop:")
 			print("Some Exception in animation loop:")
-			
+
 	def _set_color(self, i, color):
 		c = self.strip.getPixelColor(i)
 		if(c != color):
@@ -574,7 +578,7 @@ class LEDs():
 		else:
 			# self.logger.debug("skipped color update of led %i" % i)
 			pass
-			
+
 	def _update(self):
 		if(self.update_required):
 			self.strip.setBrightness(self.brightness)
@@ -587,4 +591,3 @@ class LEDs():
 
 	def _get_frame_duration(self, fps):
 		return (1.0 / int(fps)) if int(fps)>0 else 1.0
-			
