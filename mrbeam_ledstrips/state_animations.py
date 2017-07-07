@@ -99,7 +99,6 @@ def get_default_config():
 	)
 
 
-
 class LEDs():
 	def __init__(self, config):
 		try:
@@ -210,7 +209,7 @@ class LEDs():
 			[0, 0, 0, 1, 0, 0, 0]
 		]
 
-	 	f = int(round(frame / state_length)) % len(frames)
+		f = int(round(frame / state_length)) % len(frames)
 
 		for r in involved_registers:
 			for i in range(l):
@@ -290,7 +289,6 @@ class LEDs():
 
 				else:
 					self._set_color(r[i], color_done)
-
 
 		self._update()
 
@@ -557,9 +555,9 @@ class LEDs():
 
 				# Slicing
 				elif my_state in COMMANDS['SLICING_STARTED']:
-			 		self.progress(params.pop(0), self.frame, color_done=BLUE, color_drip=WHITE, state_length=3)
+					self.progress(0, self.frame, color_done=BLUE, color_drip=WHITE, state_length=3)
 				elif my_state in COMMANDS['SLICING_DONE']:
-					self.progress(params.pop(0), self.frame, color_done=BLUE, color_drip=WHITE, state_length=3)
+					self.progress(100, self.frame, color_done=BLUE, color_drip=WHITE, state_length=3)
 				elif my_state in COMMANDS['SLICING_CANCELLED']:
 					self.idle(self.frame)
 				elif my_state in COMMANDS['SLICING_FAILED']:
