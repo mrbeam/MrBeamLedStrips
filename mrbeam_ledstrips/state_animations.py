@@ -547,7 +547,7 @@ class LEDs():
 				elif my_state in COMMANDS['JOB_FINISHED']:
 					self.job_finished(self.frame)
 				elif my_state in COMMANDS['PAUSE']:
-					self.progress_pause(params.pop(0), self.frame)
+					self.progress_pause(self.job_progress, self.frame)
 				elif my_state in COMMANDS['READY_TO_PRINT']:
 					self.flash(self.frame, color=BLUE, state_length=2)
 				elif my_state in COMMANDS['READY_TO_PRINT_CANCEL']:
