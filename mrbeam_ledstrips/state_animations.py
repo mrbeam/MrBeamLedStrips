@@ -303,7 +303,7 @@ class LEDs():
 		for r in involved_registers:
 			for i in range(l):
 				bottom_up_idx = l-i-1
-				threshold = value / 100.0 * (l-1)
+				threshold = int(value) / 100.0 * (l-1)
 				if threshold < bottom_up_idx:
 					if i == bottom_up_idx / 2:
 						color = self.dim_color(color_drip, dim)
