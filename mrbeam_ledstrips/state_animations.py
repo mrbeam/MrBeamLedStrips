@@ -173,6 +173,7 @@ class LEDs():
 		self._update()
 
 	def fade_off(self, state_length=0.5, follow_state='ClientOpened'):
+		involved_registers = [LEDS_RIGHT_FRONT, LEDS_LEFT_FRONT, LEDS_RIGHT_BACK, LEDS_LEFT_BACK]
 		self.logger.info("fade_off()")
 		old_brightness = self.brightness
 		for i in range(old_brightness, -1, -1):
@@ -181,9 +182,11 @@ class LEDs():
 			self._update()
 			time.sleep(state_length * self.frame_duration)
 
-		for i in range(self.strip.numPixels()):
-			self._set_color(i, OFF)
-			self._update()
+		for r in involved_registers:
+			l = len(r)
+			for i in range(l):
+				self._set_color(r[i], OFF)
+		self._update()
 
 		self.brightness = old_brightness
 		self.change_state(follow_state)
@@ -631,7 +634,7 @@ class LEDs():
 	def _update(self):
 		if(self.update_required):
 			self.strip.setBrightness(self.brightness)
-			self.strip.show();
+			self.strip.show()
 			self.update_required = False
 			# self.logger.info("state: %s |    flush  !!!", self.state)
 		else:
