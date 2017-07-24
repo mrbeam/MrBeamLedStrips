@@ -398,6 +398,12 @@ class LEDs():
 		self._update()
 
 	def dim_color(self, col, brightness):
+		'''
+		Change the brightness (only down) of the given color value.
+		:param col: the color value you want to change the brightness
+		:param brightness: the brightness factor between 0 and 1
+		:return: new Color with the chanes brightness
+		'''
 		r = (col & 0xFF0000) >> 16
 		g = (col & 0x00FF00) >> 8
 		b = (col & 0x0000FF)
