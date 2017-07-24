@@ -175,13 +175,18 @@ class LEDs():
 	def fade_off(self, state_length=0.5, follow_state='ClientOpened'):
 		involved_registers = [LEDS_RIGHT_FRONT, LEDS_LEFT_FRONT, LEDS_RIGHT_BACK, LEDS_LEFT_BACK]
 		self.logger.info("fade_off()")
-		for b in range(self.brightness, -1, -1):
+		for b in self._mylinspace(self.brightness/255.0, 0, 10):
 			for r in involved_registers:
 				for i in range(len(r)):
 					self._set_color(r[i], self.dim_color(self.strip.getPixelColor(r[i]), b))
 			self._update()
 			time.sleep(state_length * self.frame_duration)
 		self.change_state(follow_state)
+
+	@staticmethod
+	def _mylinspace(start, stop, count):
+		step = (stop - start) / float(count)
+		return [start + i * step for i in xrange(count)]
 
 	# pulsing red from the center
 	def error(self, frame):
