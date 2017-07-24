@@ -177,9 +177,8 @@ class LEDs():
 		self.logger.info("fade_off()")
 		for b in range(self.brightness, -1, -1):
 			for r in involved_registers:
-				l = len(r)
-				for i in range(l):
-					self._set_color(r[i], self.dim_color(r[i], b))
+				for i in range(len(r)):
+					self._set_color(r[i], self.dim_color(self.strip.getPixelColor(r[i]), b))
 			self._update()
 			time.sleep(state_length * self.frame_duration)
 		self.change_state(follow_state)
