@@ -2,19 +2,13 @@
 
 import socket
 import sys
-from _version import get_versions
+import pkg_resources
 
 
 def client():
 
 	if len(sys.argv) <= 1:
-		vers = get_versions()
-		v_string = ""
-		if 'branch' in vers and vers['branch']:
-			v_string = "{} ({})".format(vers['full'], vers['branch'])
-		else:
-			v_string = vers['full']
-		print "MrBeam LED Strips v{}".format(v_string)
+		print "MrBeam LED Strips v{}".format(get_version_string())
 		sys.exit(0)
 
 
@@ -41,6 +35,12 @@ def client():
 	finally:
 		s.close()
 
+
+def get_version_string():
+	try:
+		return pkg_resources.get_distribution("mrbeam_ledstrips").version
+	except:
+		return '-'
 
 if __name__ == "__main__":
 	client()

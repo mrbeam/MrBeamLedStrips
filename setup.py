@@ -3,13 +3,6 @@
 
 from setuptools import setup, Command
 
-import versioneer
-versioneer.VCS = 'git'
-versioneer.versionfile_source = 'mrbeam_ledstrips/_version.py'
-versioneer.versionfile_build = 'mrbeam_ledstrips/_version.py'
-versioneer.tag_prefix = ''
-versioneer.parentdir_prefix = ''
-versioneer.lookupfile = '.versioneer-lookup'
 
 DESCRIPTION = "A daemon for controlling the LEDs of Mr Beam II"
 LONG_DESCRIPTION = """mrbeam_ledstrips is a small Python daemon for reading
@@ -152,17 +145,16 @@ class UninstallExtrasCommand(Command):
 
 
 def get_cmdclass():
-    cmdclass = versioneer.get_cmdclass()
-    cmdclass.update({
-        'install_extras': InstallExtrasCommand,
-        'uninstall_extras': UninstallExtrasCommand
-    })
-    return cmdclass
+	cmdclass = {
+		'install_extras': InstallExtrasCommand,
+		'uninstall_extras': UninstallExtrasCommand
+	}
+	return cmdclass
 
 
 def params():
     name = "mrbeam_ledstrips"
-    version = versioneer.get_version()
+    version = '0.1.5'
     description = DESCRIPTION
     long_description = LONG_DESCRIPTION
     author = "Teja Philipp"
