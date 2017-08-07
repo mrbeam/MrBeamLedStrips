@@ -9,6 +9,7 @@ import code
 import traceback
 import yaml
 import os
+import pkg_resources
 from .state_animations import LEDs, COMMANDS, get_default_config
 
 
@@ -136,6 +137,7 @@ class Server(object):
 	def get_info(self):
 		info = ["INFO: "]
 
+		info.append("version: {}".format(get_version_string()))
 		info.append(
 			"LEDS: state:{state}, frame:{frame}, fps:{fps}, frame_duration:{frame_duration}, job_progress:{job_progress}, brightness:{brightness}".format(
 				state=self.leds.state,
@@ -156,6 +158,13 @@ class Server(object):
 		info.append("COMMANDS: {}".format(' '.join(my_commands)))
 
 		return "\n".join(info)
+
+
+def get_version_string():
+	try:
+		return pkg_resources.get_distribution("mrbeam_ledstrips").version
+	except:
+		return '-'
 
 
 def parse_configfile(configfile):
