@@ -29,7 +29,7 @@ def client():
 	try:
 		s.send(state+'\x00')
 		print "> " + state
-		data = s.recv(1024)
+		data = s.recv(5000)
 		print "< " + data
 		s.close()		
 	finally:

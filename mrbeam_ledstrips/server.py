@@ -155,7 +155,9 @@ class Server(object):
 		my_commands = []
 		for c in COMMANDS:
 			my_commands.append(COMMANDS[c][0])
+		my_commands.sort()
 		info.append("COMMANDS: {}".format(' '.join(my_commands)))
+		info.append('')
 
 		return "\n".join(info)
 

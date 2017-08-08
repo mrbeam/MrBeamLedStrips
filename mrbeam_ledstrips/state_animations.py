@@ -74,8 +74,13 @@ COMMANDS = dict(
 	BLUE                       = ['blue', 'all_blue'],
 	YELLOW                     = ['yellow', 'all_yellow'],
 	ORANGE                     = ['orange', 'all_orange'],
-)
 
+	FLASH_RED                  = ['flash_red'],
+	FLASH_GREEN                = ['flash_green'],
+	FLASH_BLUE                 = ['flash_blue'],
+	FLASH_YELLOW               = ['flash_yellow'],
+	FLASH_ORANGE               = ['flash_orange'],
+)
 
 
 def get_default_config():
@@ -591,6 +596,8 @@ class LEDs():
 						bright = 0
 					self.brightness = bright
 					self.update_required = True
+
+				# colors
 				elif my_state in COMMANDS['RED']:
 					self.static_color(RED)
 				elif my_state in COMMANDS['GREEN']:
@@ -601,6 +608,19 @@ class LEDs():
 					self.static_color(YELLOW)
 				elif my_state in COMMANDS['ORANGE']:
 					self.static_color(ORANGE)
+
+				elif my_state in COMMANDS['FLASH_RED']:
+					self.flash(self.frame, color=RED, state_length=1)
+				elif my_state in COMMANDS['FLASH_GREEN']:
+					self.flash(self.frame, color=GREEN, state_length=1)
+				elif my_state in COMMANDS['FLASH_BLUE']:
+					self.flash(self.frame, color=BLUE, state_length=1)
+				elif my_state in COMMANDS['FLASH_YELLOW']:
+					self.flash(self.frame, color=YELLOW, state_length=1)
+				elif my_state in COMMANDS['FLASH_ORANGE']:
+					self.flash(self.frame, color=ORANGE, state_length=1)
+
+				# stuff
 				elif my_state in COMMANDS['FPS']:
 					self.set_fps(params.pop(0))
 					self.rollback()
@@ -609,11 +629,11 @@ class LEDs():
 					self.rollback()
 				elif my_state in COMMANDS['DEBUG_STOP']:
 					self.logger.info('DebugStop: going to sleep. Thread: %s', threading.current_thread())
-					time.sleep(10000)
+					time.sleep(100)
 					self.logger.info('DebugStop: Woke up!!!. Thread: %s', threading.current_thread())
 					self.rollback()
 				else:
-					self.my_state = COMMANDS['UNKNOWN'][0]
+					self.state = COMMANDS['UNKNOWN'][0]
 					self.idle(self.frame, color=Color(20, 20, 20), state_length=2)
 
 				# set interior at the end
