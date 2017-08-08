@@ -80,6 +80,9 @@ COMMANDS = dict(
 	FLASH_BLUE                 = ['flash_blue'],
 	FLASH_YELLOW               = ['flash_yellow'],
 	FLASH_ORANGE               = ['flash_orange'],
+
+	CUSTOM_COLOR               = ['color'],
+	FLASH_CUSTOM_COLOR         = ['flash_color'],
 )
 
 
@@ -166,7 +169,11 @@ class LEDs():
 		self.state = nu_state
 		self.frame = 0
 		time.sleep(0.2)
-		return "State change: '{old}' -> '{nu}' - current: '{current}'".format(old=old_state, nu=nu_state, current=self.state)
+		if self.state == nu_state:
+			return "OK {state}   # {old} -> {nu}".format(old=old_state, nu=nu_state, state=self.state)
+		else:
+			return "ERROR {state}   # {old} -> {nu}".format(old=old_state, nu=self.state, state=nu_state)
+		# return "State change: '{old}' -> '{nu}' - current: '{current}'".format(old=old_state, nu=nu_state, current=self.state)
 
 	def clean_exit(self, signal, msg):
 		print 'shutting down, signal was: %s' % signal
@@ -608,6 +615,15 @@ class LEDs():
 					self.static_color(YELLOW)
 				elif my_state in COMMANDS['ORANGE']:
 					self.static_color(ORANGE)
+				elif my_state in COMMANDS['CUSTOM_COLOR']:
+					try:
+						r = int(params.pop(0))
+						g = int(params.pop(0))
+						b = int(params.pop(0))
+						self.static_color(Color(r, g, b))
+					except:
+						self.logger.exception("Error in color command: {}".format(self.state))
+						self.set_state_unknown()
 
 				elif my_state in COMMANDS['FLASH_RED']:
 					self.flash(self.frame, color=RED, state_length=1)
@@ -619,6 +635,15 @@ class LEDs():
 					self.flash(self.frame, color=YELLOW, state_length=1)
 				elif my_state in COMMANDS['FLASH_ORANGE']:
 					self.flash(self.frame, color=ORANGE, state_length=1)
+				elif my_state in COMMANDS['FLASH_CUSTOM_COLOR']:
+					try:
+						r = int(params.pop(0))
+						g = int(params.pop(0))
+						b = int(params.pop(0))
+						self.flash(self.frame, color=Color(r, g, b), state_length=1)
+					except:
+						self.logger.exception("Error in flash_color command: {}".format(self.state))
+						self.set_state_unknown()
 
 				# stuff
 				elif my_state in COMMANDS['FPS']:
@@ -633,7 +658,7 @@ class LEDs():
 					self.logger.info('DebugStop: Woke up!!!. Thread: %s', threading.current_thread())
 					self.rollback()
 				else:
-					self.state = COMMANDS['UNKNOWN'][0]
+					self.set_state_unknown()
 					self.idle(self.frame, color=Color(20, 20, 20), state_length=2)
 
 				# set interior at the end
@@ -648,6 +673,9 @@ class LEDs():
 		except:
 			self.logger.exception("Some Exception in animation loop:")
 			print("Some Exception in animation loop:")
+
+	def set_state_unknown(self):
+		self.state = COMMANDS['UNKNOWN'][0]
 
 	def _set_color(self, i, color):
 		c = self.strip.getPixelColor(i)
