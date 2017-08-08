@@ -72,6 +72,8 @@ COMMANDS = dict(
 	RED                        = ['red', 'all_red'],
 	GREEN                      = ['green', 'all_green'],
 	BLUE                       = ['blue', 'all_blue'],
+	YELLOW                     = ['yellow', 'all_yellow'],
+	ORANGE                     = ['orange', 'all_orange'],
 )
 
 
@@ -595,6 +597,10 @@ class LEDs():
 					self.static_color(GREEN)
 				elif my_state in COMMANDS['BLUE']:
 					self.static_color(BLUE)
+				elif my_state in COMMANDS['YELLOW']:
+					self.static_color(YELLOW)
+				elif my_state in COMMANDS['ORANGE']:
+					self.static_color(ORANGE)
 				elif my_state in COMMANDS['FPS']:
 					self.set_fps(params.pop(0))
 					self.rollback()
