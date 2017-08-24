@@ -68,6 +68,9 @@ COMMANDS = dict(
 	SLICING_FAILED             = ['SlicingFailed'],
 	SLICING_PROGRESS           = ['SlicingProgress', 'slicing_progress'],
 	SETTINGS_UPDATED           = ['SettingsUpdated'],
+	LASER_JOB_DONE             = ['LaserJobDone'],
+	LASER_JOB_CANCELLED        = ['LaserJobCancelled'],
+	LASER_JOB_FAILED           = ['LaserJobFailed'],
 
 	WHITE                      = ['white', 'all_white'],
 	RED                        = ['red', 'all_red'],
@@ -378,6 +381,26 @@ class LEDs():
 
 		self._update()
 
+	def dust_extraction(self, frame, state_length=1):
+		# self.illuminate()  # interior light always on
+		involved_registers = [LEDS_RIGHT_FRONT, LEDS_LEFT_FRONT, LEDS_RIGHT_BACK, LEDS_LEFT_BACK]
+		l = len(LEDS_RIGHT_BACK)
+		f = int(round(frame / state_length)) % (self.fps + l*2)
+
+		if f < l*2:
+			for i in range(int(round(f/2))-1, -1, -1):
+				for r in involved_registers:
+					self._set_color(r[i], ORANGE)
+
+		else:
+			for i in range(l-1, -1, -1):
+				for r in involved_registers:
+					brightness = 1 - (f - 2*l)/self.fps * 1.0
+					col = self.dim_color(ORANGE, brightness)
+					self._set_color(r[i], col)
+
+		self._update()
+
 	def shutdown(self, frame):
 		self.static_color(RED)
 
@@ -547,10 +570,20 @@ class LEDs():
 					self.progress(0, self.frame)
 				elif my_state in COMMANDS['PRINT_DONE']:
 					self.job_progress = 0
-					self.job_finished(self.frame)
+					self.dust_extraction(self.frame)
 				elif my_state in COMMANDS['PRINT_CANCELLED']:
 					self.job_progress = 0
+					self.dust_extraction(self.frame)
+
+				elif my_state in COMMANDS['LASER_JOB_DONE']:
+					self.job_progress = 0
+					self.job_finished(self.frame)
+				elif my_state in COMMANDS['LASER_JOB_CANCELLED']:
+					self.job_progress = 0
 					self.fade_off()
+				elif my_state in COMMANDS['LASER_JOB_FAILED']:
+					self.fade_off()
+
 				elif my_state in COMMANDS['PRINT_PAUSED']:
 					self.progress_pause(self.job_progress, self.frame)
 				elif my_state in COMMANDS['PRINT_PAUSED_TIMEOUT']:
