@@ -69,12 +69,14 @@ COMMANDS = dict(
 	SLICING_PROGRESS           = ['SlicingProgress', 'slicing_progress'],
 	SETTINGS_UPDATED           = ['SettingsUpdated'],
 
+	WHITE                      = ['white', 'all_white'],
 	RED                        = ['red', 'all_red'],
 	GREEN                      = ['green', 'all_green'],
 	BLUE                       = ['blue', 'all_blue'],
 	YELLOW                     = ['yellow', 'all_yellow'],
 	ORANGE                     = ['orange', 'all_orange'],
 
+	FLASH_WHITE                = ['flash_white'],
 	FLASH_RED                  = ['flash_red'],
 	FLASH_GREEN                = ['flash_green'],
 	FLASH_BLUE                 = ['flash_blue'],
@@ -605,6 +607,8 @@ class LEDs():
 					self.update_required = True
 
 				# colors
+				elif my_state in COMMANDS['WHITE']:
+					self.static_color(WHITE)
 				elif my_state in COMMANDS['RED']:
 					self.static_color(RED)
 				elif my_state in COMMANDS['GREEN']:
@@ -625,22 +629,31 @@ class LEDs():
 						self.logger.exception("Error in color command: {}".format(self.state))
 						self.set_state_unknown()
 
+				elif my_state in COMMANDS['FLASH_WHITE']:
+					state_length = int(params.pop(0)) if len(params) > 0 else 1
+					self.flash(self.frame, color=WHITE, state_length=state_length)
 				elif my_state in COMMANDS['FLASH_RED']:
-					self.flash(self.frame, color=RED, state_length=1)
+					state_length = int(params.pop(0)) if len(params) > 0 else 1
+					self.flash(self.frame, color=RED, state_length=state_length)
 				elif my_state in COMMANDS['FLASH_GREEN']:
-					self.flash(self.frame, color=GREEN, state_length=1)
+					state_length = int(params.pop(0)) if len(params) > 0 else 1
+					self.flash(self.frame, color=GREEN, state_length=state_length)
 				elif my_state in COMMANDS['FLASH_BLUE']:
-					self.flash(self.frame, color=BLUE, state_length=1)
+					state_length = int(params.pop(0)) if len(params) > 0 else 1
+					self.flash(self.frame, color=BLUE, state_length=state_length)
 				elif my_state in COMMANDS['FLASH_YELLOW']:
-					self.flash(self.frame, color=YELLOW, state_length=1)
+					state_length = int(params.pop(0)) if len(params) > 0 else 1
+					self.flash(self.frame, color=YELLOW, state_length=state_length)
 				elif my_state in COMMANDS['FLASH_ORANGE']:
-					self.flash(self.frame, color=ORANGE, state_length=1)
+					state_length = int(params.pop(0)) if len(params) > 0 else 1
+					self.flash(self.frame, color=ORANGE, state_length=state_length)
 				elif my_state in COMMANDS['FLASH_CUSTOM_COLOR']:
 					try:
 						r = int(params.pop(0))
 						g = int(params.pop(0))
 						b = int(params.pop(0))
-						self.flash(self.frame, color=Color(r, g, b), state_length=1)
+						state_length = int(params.pop(0)) if len(params) > 0 else 1
+						self.flash(self.frame, color=Color(r, g, b), state_length=state_length)
 					except:
 						self.logger.exception("Error in flash_color command: {}".format(self.state))
 						self.set_state_unknown()
