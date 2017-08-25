@@ -116,34 +116,30 @@ def get_default_config():
 
 class LEDs():
 	def __init__(self, config):
-		try:
-			self.config = config
-			self.logger = logging.getLogger(__name__)
-			print("LEDs staring up with config: %s" % self.config)
-			self.logger.info("LEDs staring up with config: %s", self.config)
+		self.config = config
+		self.logger = logging.getLogger(__name__)
+		print("LEDs staring up with config: %s" % self.config)
+		self.logger.info("LEDs staring up with config: %s", self.config)
 
-			# Create NeoPixel object with appropriate configuration.
-			self._inti_strip(self.config['led_freq_hz'],
-						self.config['spread_spectrum_enabled'],
-						spread_spectrum_random=self.config['spread_spectrum_random'],
-						spread_spectrum_bandwidth=self.config['spread_spectrum_bandwidth'],
-						spread_spectrum_channel_width=self.config['spread_spectrum_channel_width'],
-						spread_spectrum_hopping_delay_ms=self.config['spread_spectrum_hopping_delay_ms'])
-			self.logger.info("LEDs strip initialized")
-			self.state = COMMANDS['LISTENING'][0]
-			self.past_states = []
-			signal.signal(signal.SIGTERM, self.clean_exit)  # switch off the LEDs on exit
-			self.job_progress = 0
-			self.brightness = self.config['led_brigthness']
-			self.fps = self.config['frames_per_second']
-			self.frame_duration = self._get_frame_duration(self.fps)
-			self.update_required = False
-			self._last_interior = None
-		except:
-			# this doesn't appear in the logs. Dunno why....
-			self.logger.exception("LEDs init() exception:")
+		# Create NeoPixel object with appropriate configuration.
+		self._init_strip(self.config['led_freq_hz'],
+					self.config['spread_spectrum_enabled'],
+					spread_spectrum_random=self.config['spread_spectrum_random'],
+					spread_spectrum_bandwidth=self.config['spread_spectrum_bandwidth'],
+					spread_spectrum_channel_width=self.config['spread_spectrum_channel_width'],
+					spread_spectrum_hopping_delay_ms=self.config['spread_spectrum_hopping_delay_ms'])
+		self.logger.info("LEDs strip initialized")
+		self.state = COMMANDS['LISTENING'][0]
+		self.past_states = []
+		signal.signal(signal.SIGTERM, self.clean_exit)  # switch off the LEDs on exit
+		self.job_progress = 0
+		self.brightness = self.config['led_brigthness']
+		self.fps = self.config['frames_per_second']
+		self.frame_duration = self._get_frame_duration(self.fps)
+		self.update_required = False
+		self._last_interior = None
 
-	def _inti_strip(self, freq_hz, spread_spectrum_enabled,
+	def _init_strip(self, freq_hz, spread_spectrum_enabled,
 					spread_spectrum_random=False,
 					spread_spectrum_bandwidth=None,
 					spread_spectrum_channel_width=None,
@@ -474,7 +470,7 @@ class LEDs():
 		self.logger.info("spread_spectrum()")
 		enabled = params.pop(0)
 		if enabled == 'off':
-			self._inti_strip(LED_FREQ_HZ, False)
+			self._init_strip(LED_FREQ_HZ, False)
 			self.logger.info("spread_spectrum() off, led frequency is: %s", LED_FREQ_HZ)
 		elif enabled == 'on' and len(params) in (4,5):
 			try:
@@ -484,7 +480,7 @@ class LEDs():
 				hopping_delay = int(params.pop(0))
 				random = params.pop(0).startswith('r') if len(params) > 0 else False
 				self.logger.info("spread_spectrum() on: freq=%s, bandwidth=%s, channel_width=%s, hopping_delay=%s, random:%s", freq, bandwidth, channel_width, hopping_delay, random)
-				self._inti_strip(freq, True,
+				self._init_strip(freq, True,
 					spread_spectrum_random=random,
 					spread_spectrum_bandwidth=bandwidth,
 					spread_spectrum_channel_width=channel_width,
