@@ -462,7 +462,7 @@ class LEDs():
 		r = (col & 0xFF0000) >> 16
 		g = (col & 0x00FF00) >> 8
 		b = (col & 0x0000FF)
-		return Color(led_gamma_correction[int(r*brightness)], led_gamma_correction[int(g*brightness)], led_gamma_correction[int(b*brightness)])
+		return Color(int(r*brightness), int(g*brightness), int(b*brightness))
 
 	def demo_state(self, frame):
 		f = frame % 4300
@@ -740,9 +740,13 @@ class LEDs():
 		self.state = COMMANDS['UNKNOWN'][0]
 
 	def _set_color(self, i, color):
+		r = led_gamma_correction[(color & 0xFF0000) >> 16]
+		g = led_gamma_correction[(color & 0x00FF00) >> 8]
+		b = led_gamma_correction[(color & 0x0000FF)]
+		color_corrected = Color(r, g, b)
 		c = self.strip.getPixelColor(i)
-		if(c != color):
-			self.strip.setPixelColor(i, color)
+		if(c != color_corrected):
+			self.strip.setPixelColor(i, color_corrected)
 			self.update_required = True
 			# self.logger.info("colors did not match update %i : %i" % (color,c))
 		else:
