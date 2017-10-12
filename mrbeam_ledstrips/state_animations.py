@@ -40,6 +40,7 @@ COMMANDS = dict(
 	ROLLBACK                   = ['rollback'],
 	FPS                        = ['fps'],
 	SPREAD_SPECTRUM            = ['spread_spectrum'],
+	IGNORE_NEXT_COMMAND        = ['ignore_next_command'],
 
 	LISTENING                  = ['Listening', '_listening', 'listening'],
 	STARTUP                    = ['Startup'],
@@ -140,6 +141,7 @@ class LEDs():
 		self.frame_duration = self._get_frame_duration(self.fps)
 		self.update_required = False
 		self._last_interior = None
+		self.ignore_next_command = None
 
 	def _init_strip(self, freq_hz, spread_spectrum_enabled,
 					spread_spectrum_random=False,
@@ -162,6 +164,11 @@ class LEDs():
 		self.strip.begin()  # Init the LED-strip
 
 	def change_state(self, nu_state):
+		if self.ignore_next_command:
+			self.ignore_next_command = None
+			print("state change ignored! keeping: " + str(self.state) + ", ignored: " + str(nu_state))
+			return "IGNORED {state}   # {old} -> {nu}".format(old=self.state, nu=self.state, state=nu_state)
+
 		old_state = self.state
 		print("state change " + str(self.state) + " => " + str(nu_state))
 		self.logger.info("state change " + str(self.state) + " => " + str(nu_state))
@@ -696,9 +703,13 @@ class LEDs():
 				elif my_state in COMMANDS['SPREAD_SPECTRUM']:
 					self.spread_spectrum(params)
 					self.rollback()
+				elif my_state in COMMANDS['IGNORE_NEXT_COMMAND']:
+					self.ignore_next_command = my_state
+					self.rollback()
 				elif my_state in COMMANDS['DEBUG_STOP']:
-					self.logger.info('DebugStop: going to sleep. Thread: %s', threading.current_thread())
-					time.sleep(100)
+					sleept_time = float(params.pop(0))
+					self.logger.info('DebugStop: going to sleep for %ss. Thread: %s', sleept_time, threading.current_thread())
+					time.sleep(sleept_time)
 					self.logger.info('DebugStop: Woke up!!!. Thread: %s', threading.current_thread())
 					self.rollback()
 				else:
