@@ -41,6 +41,7 @@ COMMANDS = dict(
 	FPS                        = ['fps'],
 	SPREAD_SPECTRUM            = ['spread_spectrum'],
 	IGNORE_NEXT_COMMAND        = ['ignore_next_command'],
+	IGNORE_STOP                = ['ignore_stop'],
 
 	LISTENING                  = ['Listening', '_listening', 'listening'],
 	STARTUP                    = ['Startup'],
@@ -179,7 +180,7 @@ class LEDs():
 		self.state = nu_state
 		self.frame = 0
 		time.sleep(0.2)
-		if self.state == nu_state:
+		if self.state == nu_state or nu_state in COMMANDS['IGNORE_NEXT_COMMAND']:
 			return "OK {state}   # {old} -> {nu}".format(old=old_state, nu=nu_state, state=self.state)
 		else:
 			return "ERROR {state}   # {old} -> {nu}".format(old=old_state, nu=self.state, state=nu_state)
@@ -705,6 +706,9 @@ class LEDs():
 					self.rollback()
 				elif my_state in COMMANDS['IGNORE_NEXT_COMMAND']:
 					self.ignore_next_command = my_state
+					self.rollback()
+				elif my_state in COMMANDS['IGNORE_STOP']:
+					self.ignore_next_command = None
 					self.rollback()
 				elif my_state in COMMANDS['DEBUG_STOP']:
 					sleept_time = float(params.pop(0))
