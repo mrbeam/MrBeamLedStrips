@@ -180,7 +180,7 @@ class LEDs():
 		self.state = nu_state
 		self.frame = 0
 		time.sleep(0.2)
-		if self.state == nu_state or nu_state in COMMANDS['IGNORE_NEXT_COMMAND']:
+		if self.state == nu_state or nu_state in COMMANDS['IGNORE_NEXT_COMMAND'] or nu_state in COMMANDS['IGNORE_STOP']:
 			return "OK {state}   # {old} -> {nu}".format(old=old_state, nu=nu_state, state=self.state)
 		else:
 			return "ERROR {state}   # {old} -> {nu}".format(old=old_state, nu=self.state, state=nu_state)
