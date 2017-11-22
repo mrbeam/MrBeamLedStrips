@@ -58,6 +58,7 @@ COMMANDS = dict(
 	PRINT_PAUSED               = ['PrintPaused'],
 	PRINT_PAUSED_TIMEOUT       = ['PrintPausedTimeout'],
 	PRINT_PAUSED_TIMEOUT_BLOCK = ['PrintPausedTimeoutBlock'],
+	BUTTON_PRESS_REJECT        = ['ButtonPressReject'],
 	PRINT_RESUMED              = ['PrintResumed'],
 	PROGRESS                   = ['Progress', 'progress'],
 	JOB_FINISHED               = ['JobFinished', 'job_finished'],
@@ -612,6 +613,11 @@ class LEDs():
 					self.flash(self.frame, color=BLUE, state_length=2)
 				elif my_state in COMMANDS['READY_TO_PRINT_CANCEL']:
 					self.idle(self.frame)
+				elif my_state in COMMANDS['BUTTON_PRESS_REJECT']:
+					if self.frame > self.fps:
+						self.rollback()
+					else:
+						self.progress_pause(self.job_progress, self.frame, False, color_drip=RED)
 
 				# Slicing
 				elif my_state in COMMANDS['SLICING_STARTED']:
