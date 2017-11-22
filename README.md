@@ -15,6 +15,54 @@ Or use the command line interface:
 
     * `` (no command) Prints version of MrBeamLedStrips. (Does not connect to daemon.)
     * `?` Prints version, list of possible commands and debug information
+    * `unknown`
+    * `DebugStop`
+    * `on`, `all_on`
+    * `off`, `all_off`
+    * `brightness`
+    * `rollback`
+    * `fps`
+    * `spread_spectrum`
+    * `ignore_next_command`
+    * `ignore_stop`
+    * `Listening`, `_listening`, `listening`
+    * `Startup`
+    * `ClientOpened`
+    * `ClientClosed`
+    * `Error`
+    * `Shutdown`
+    * `ShutdownPrepare`
+    * `ShutdownPrepareCancel`
+    * `Upload`
+    * `PrintStarted`
+    * `PrintDone`
+    * `PrintCancelled`
+    * `PrintPaused`
+    * `PrintPausedTimeout`
+    * `PrintPausedTimeoutBlock`
+    * `ButtonPressReject`
+    * `PrintResumed`
+    * `Progress`, `progress`
+    * `JobFinished`, `job_finished`
+    * `Pause`, `pause`
+    * `ReadyToPrint`
+    * `ReadyToPrintCancel`
+    * `SlicingStarted`
+    * `SlicingDone`
+    * `SlicingCancelled`
+    * `SlicingFailed`
+    * `SlicingProgress`, `slicing_progress`
+    * `SettingsUpdated`
+    * `LaserJobDone`
+    * `LaserJobCancelled`
+    * `LaserJobFailed`
+    * `white`, `all_white`
+    * `red`, `all_red`
+    * `green`, `all_green`
+    * `blue`, `all_blue`
+    * `yellow`, `all_yellow`
+    * `orange`, `all_orange`
+
 
 ## Config
 For configuration see:
