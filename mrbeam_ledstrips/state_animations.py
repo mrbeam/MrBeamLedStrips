@@ -299,13 +299,13 @@ class LEDs():
 		l = len(LEDS_RIGHT_BACK)
 		c = int(round(frame / state_length)) % l
 
-		# self.illuminate() # interior light always on
+		value = self._get_int_val(value)
 
 		for r in involved_registers:
 			for i in range(l):
 
 				bottom_up_idx = l-i-1
-				threshold = int(value) / 100.0 * (l-1)
+				threshold = value / 100.0 * (l-1)
 				if threshold < bottom_up_idx:
 					if i == c:
 						self._set_color(r[i], color_drip)
@@ -323,12 +323,13 @@ class LEDs():
 		l = len(LEDS_RIGHT_BACK)
 		f_count = state_length * self.fps
 		dim = abs((frame/state_length % f_count*2) - (f_count-1))/f_count if breathing else 1
-		# self.illuminate() # interior light always on
+
+		value = self._get_int_val(value)
 
 		for r in involved_registers:
 			for i in range(l):
 				bottom_up_idx = l-i-1
-				threshold = int(value) / 100.0 * (l-1)
+				threshold = value / 100.0 * (l-1)
 				if threshold < bottom_up_idx:
 					if i == bottom_up_idx / 2:
 						color = self.dim_color(color_drip, dim)
@@ -764,3 +765,12 @@ class LEDs():
 
 	def _get_frame_duration(self, fps):
 		return (1.0 / int(fps)) if int(fps)>0 else 1.0
+
+
+	def _get_int_val(self, value):
+		try:
+			value = int(float(value))
+		except:
+			self.logger.exception("_get_int_val() Cant convert value '%s' to int. Using 0 as value. ", value)
+			return 0
+		return value
