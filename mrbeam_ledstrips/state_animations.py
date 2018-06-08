@@ -22,6 +22,11 @@ LEDS_LEFT_BACK =   [39, 40, 41, 42, 43, 44, 45]
 # order is right -> left
 LEDS_INSIDE =      [14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31]
 
+# Focus Tool
+LEDS_FOCUS_TOOL =  [0,1,2,3]
+
+
+
 # color definitions
 OFF =    Color(0, 0, 0)
 WHITE =  Color(255, 255, 255)
@@ -30,6 +35,14 @@ GREEN =  Color(0, 255, 0)
 BLUE =   Color(0, 0, 255)
 YELLOW = Color(255, 200, 0)
 ORANGE = Color(226, 83, 3)
+
+FOCUS_TOOL_COLORS = {
+	'O': GREEN, # OK
+	'W': YELLOW, # WARNING
+	'E': RED, # ERROR
+	'N': None, # don't change / skip
+	'P': Color(127,127,127) # Progress
+}
 
 COMMANDS = dict(
 	UNKNOWN                    = ['unknown'],
@@ -91,6 +104,8 @@ COMMANDS = dict(
 
 	CUSTOM_COLOR               = ['color'],
 	FLASH_CUSTOM_COLOR         = ['flash_color'],
+	FOCUS_TOOL_STATE           = ['focus_tool_state'],
+	FOCUS_TOOL_IDLE            = ['focus_tool_idle'],
 )
 
 
@@ -157,12 +172,16 @@ class LEDs():
 									   invert=self.config['led_invert'],
 									   brightness=self.config['led_brigthness'],
 									   strip_type=ws.SK6812_STRIP)
-		self.strip.set_spread_spectrum_config(
-				 spread_spectrum_enabled=spread_spectrum_enabled,
-				 spread_spectrum_random=spread_spectrum_random,
-				 spread_spectrum_bandwidth=spread_spectrum_bandwidth,
-				 spread_spectrum_channel_width=spread_spectrum_channel_width,
-				 spread_spectrum_hopping_delay_ms=spread_spectrum_hopping_delay_ms)
+		spsp = getattr(self.strip, "set_spread_spectrum_config", None)
+		if callable(spsp):
+			self.strip.set_spread_spectrum_config(
+					 spread_spectrum_enabled=spread_spectrum_enabled,
+					 spread_spectrum_random=spread_spectrum_random,
+					 spread_spectrum_bandwidth=spread_spectrum_bandwidth,
+					 spread_spectrum_channel_width=spread_spectrum_channel_width,
+					 spread_spectrum_hopping_delay_ms=spread_spectrum_hopping_delay_ms)
+		else:
+			self.logger.info('Spread Spectrum not supported. Install Mr Beams custom rpi_ws281x instead of stock version.')
 		self.strip.begin()  # Init the LED-strip
 
 	def change_state(self, nu_state):
@@ -443,6 +462,30 @@ class LEDs():
 		for i in range(len(leds)):
 			self._set_color(leds[i], color)
 		self._update()
+		
+	def focus_tool_idle(self, frame, state_length=2):
+		leds = LEDS_FOCUS_TOOL
+		f_count = state_length * self.fps
+		dim = abs((frame/state_length % f_count*2) - (f_count-1))/f_count
+
+		color = self.dim_color(Color(64,64,64), dim)
+		l = len(leds)
+		for i in range(l):
+			if i == l-1:
+				self._set_color(leds[i], color)
+			else:
+				self._set_color(leds[i], OFF)
+		self._update()
+		
+	def focus_tool_state(self, frame, states):
+		for i in range(len(states)):
+			idx, state = states[i]
+			color = FOCUS_TOOL_COLORS.get(state, None)
+			if(state == "P" and (frame % 10) > 5):
+				color = OFF
+			if(color != None):
+				self._set_color(LEDS_FOCUS_TOOL[idx], color)
+		self._update()
 
 	def dim_color(self, col, brightness):
 		'''
@@ -703,6 +746,19 @@ class LEDs():
 					except:
 						self.logger.exception("Error in flash_color command: {}".format(self.state))
 						self.set_state_unknown()
+				elif my_state in COMMANDS['FOCUS_TOOL_IDLE']:
+					self.focus_tool_idle(self.frame)
+				elif my_state in COMMANDS['FOCUS_TOOL_STATE']:
+					states = []
+					try:
+						while(len(params) >= 2):
+							led_idx = int(params.pop(0))
+							led_status = params.pop(0)
+							states.append( (led_idx, led_status) )
+							
+						self.focus_tool_state(self.frame, states)
+					except:
+						self.logger.exception("Error in focus_tool_state command: {}".format(self.state))
 
 				# stuff
 				elif my_state in COMMANDS['FPS']:
