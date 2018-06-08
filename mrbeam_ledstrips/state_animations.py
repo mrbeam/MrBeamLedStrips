@@ -40,7 +40,8 @@ FOCUS_TOOL_COLORS = {
 	'O': GREEN, # OK
 	'W': YELLOW, # WARNING
 	'E': RED, # ERROR
-	'N': None, # don't change / skip
+	'S': None, # don't change / skip
+	'N': OFF, # OFF
 	'P': Color(127,127,127) # Progress
 }
 
@@ -480,7 +481,7 @@ class LEDs():
 	def focus_tool_state(self, frame, states):
 		for i in range(len(states)):
 			idx, state = states[i]
-			color = FOCUS_TOOL_COLORS.get(state, None)
+			color = FOCUS_TOOL_COLORS.get(state, OFF)
 			if(state == "P" and (frame % 10) > 5):
 				color = OFF
 			if(color != None):
