@@ -22,8 +22,8 @@ LEDS_LEFT_BACK =   [39, 40, 41, 42, 43, 44, 45]
 # order is right -> left
 LEDS_INSIDE =      [14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31]
 
-# Focus Tool
-LEDS_FOCUS_TOOL =  [0,1,2,3]
+# Focus Tool (HW from left to right: 0,1,2,3)
+LEDS_FOCUS_TOOL =  [3,2,1,0]
 
 
 
@@ -37,12 +37,12 @@ YELLOW = Color(255, 200, 0)
 ORANGE = Color(226, 83, 3)
 
 FOCUS_TOOL_COLORS = {
-	'O': GREEN, # OK
-	'W': YELLOW, # WARNING
-	'E': RED, # ERROR
+	'O': Color(0,64,0), # OK
+	'W': Color(64,32,0), # WARNING
+	'E': Color(127,0,0), # ERROR
 	'S': None, # don't change / skip
 	'N': OFF, # OFF
-	'P': Color(127,127,127) # Progress
+	'P': Color(32,32,32) # Progress
 }
 
 COMMANDS = dict(
@@ -108,7 +108,6 @@ COMMANDS = dict(
 	FOCUS_TOOL_STATE           = ['focus_tool_state'],
 	FOCUS_TOOL_IDLE            = ['focus_tool_idle'],
 )
-
 
 def get_default_config():
 	# config file overrides these....
