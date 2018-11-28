@@ -154,7 +154,7 @@ def get_cmdclass():
 
 def params():
     name = "mrbeam_ledstrips"
-    version = '0.1.12'
+    version = '0.1.13'
     description = DESCRIPTION
     long_description = LONG_DESCRIPTION
     author = "Teja Philipp"

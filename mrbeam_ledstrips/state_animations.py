@@ -22,6 +22,11 @@ LEDS_LEFT_BACK =   [39, 40, 41, 42, 43, 44, 45]
 # order is right -> left
 LEDS_INSIDE =      [14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31]
 
+# Focus Tool (HW from left to right: 0,1,2,3)
+LEDS_FOCUS_TOOL =  [3,2,1,0]
+
+
+
 # color definitions
 OFF =    Color(0, 0, 0)
 WHITE =  Color(255, 255, 255)
@@ -30,6 +35,15 @@ GREEN =  Color(0, 255, 0)
 BLUE =   Color(0, 0, 255)
 YELLOW = Color(255, 200, 0)
 ORANGE = Color(226, 83, 3)
+
+FOCUS_TOOL_COLORS = {
+	'O': Color(0,64,0), # OK
+	'W': Color(64,32,0), # WARNING
+	'E': Color(127,0,0), # ERROR
+	'S': None, # don't change / skip
+	'N': OFF, # OFF
+	'P': Color(32,32,32) # Progress
+}
 
 COMMANDS = dict(
 	UNKNOWN                    = ['unknown'],
@@ -91,8 +105,9 @@ COMMANDS = dict(
 
 	CUSTOM_COLOR               = ['color'],
 	FLASH_CUSTOM_COLOR         = ['flash_color'],
+	FOCUS_TOOL_STATE           = ['focus_tool_state'],
+	FOCUS_TOOL_IDLE            = ['focus_tool_idle'],
 )
-
 
 def get_default_config():
 	# config file overrides these....
@@ -120,6 +135,9 @@ def get_default_config():
 
 
 class LEDs():
+
+	lock = threading.Lock()
+
 	def __init__(self, config):
 		self.config = config
 		self.logger = logging.getLogger(__name__)
@@ -157,35 +175,41 @@ class LEDs():
 									   invert=self.config['led_invert'],
 									   brightness=self.config['led_brigthness'],
 									   strip_type=ws.SK6812_STRIP)
-		self.strip.set_spread_spectrum_config(
-				 spread_spectrum_enabled=spread_spectrum_enabled,
-				 spread_spectrum_random=spread_spectrum_random,
-				 spread_spectrum_bandwidth=spread_spectrum_bandwidth,
-				 spread_spectrum_channel_width=spread_spectrum_channel_width,
-				 spread_spectrum_hopping_delay_ms=spread_spectrum_hopping_delay_ms)
+		spsp = getattr(self.strip, "set_spread_spectrum_config", None)
+		if callable(spsp):
+			self.strip.set_spread_spectrum_config(
+					 spread_spectrum_enabled=spread_spectrum_enabled,
+					 spread_spectrum_random=spread_spectrum_random,
+					 spread_spectrum_bandwidth=spread_spectrum_bandwidth,
+					 spread_spectrum_channel_width=spread_spectrum_channel_width,
+					 spread_spectrum_hopping_delay_ms=spread_spectrum_hopping_delay_ms)
+		else:
+			self.logger.info('Spread Spectrum not supported. Install Mr Beams custom rpi_ws281x instead of stock version.')
 		self.strip.begin()  # Init the LED-strip
 
 	def change_state(self, nu_state):
-		if self.ignore_next_command:
-			self.ignore_next_command = None
-			print("state change ignored! keeping: " + str(self.state) + ", ignored: " + str(nu_state))
-			return "IGNORED {state}   # {old} -> {nu}".format(old=self.state, nu=self.state, state=nu_state)
+		with self.lock:
+			if self.ignore_next_command:
+				self.ignore_next_command = None
+				print("state change ignored! keeping: " + str(self.state) + ", ignored: " + str(nu_state))
+				return "IGNORED {state}   # {old} -> {nu}".format(old=self.state, nu=self.state, state=nu_state)
 
-		old_state = self.state
-		print("state change " + str(self.state) + " => " + str(nu_state))
-		self.logger.info("state change " + str(self.state) + " => " + str(nu_state))
-		if self.state != nu_state:
-			self.past_states.append(self.state)
-			while len(self.past_states) > 10:
-				self.past_states.pop(0)
-		self.state = nu_state
-		self.frame = 0
-		time.sleep(0.2)
-		if self.state == nu_state or nu_state in COMMANDS['IGNORE_NEXT_COMMAND'] or nu_state in COMMANDS['IGNORE_STOP']:
-			return "OK {state}   # {old} -> {nu}".format(old=old_state, nu=nu_state, state=self.state)
-		else:
-			return "ERROR {state}   # {old} -> {nu}".format(old=old_state, nu=self.state, state=nu_state)
-		# return "State change: '{old}' -> '{nu}' - current: '{current}'".format(old=old_state, nu=nu_state, current=self.state)
+			old_state = self.state
+			if self.state != nu_state:
+				print("state change " + str(self.state) + " => " + str(nu_state))
+				self.logger.info("state change " + str(self.state) + " => " + str(nu_state))
+				if self.state != nu_state:
+					self.past_states.append(self.state)
+					while len(self.past_states) > 10:
+						self.past_states.pop(0)
+				self.state = nu_state
+				self.frame = 0
+				time.sleep(0.2)
+			if self.state == nu_state or nu_state in COMMANDS['IGNORE_NEXT_COMMAND'] or nu_state in COMMANDS['IGNORE_STOP']:
+				return "OK {state}   # {old} -> {nu}".format(old=old_state, nu=nu_state, state=self.state)
+			else:
+				return "ERROR {state}   # {old} -> {nu}".format(old=old_state, nu=self.state, state=nu_state)
+			# return "State change: '{old}' -> '{nu}' - current: '{current}'".format(old=old_state, nu=nu_state, current=self.state)
 
 	def clean_exit(self, signal, msg):
 		print 'shutting down, signal was: %s' % signal
@@ -398,13 +422,13 @@ class LEDs():
 		if f < l*2:
 			for i in range(int(round(f/2))-1, -1, -1):
 				for r in involved_registers:
-					self._set_color(r[i], ORANGE)
+					self._set_color(r[i], WHITE)
 
 		else:
 			for i in range(l-1, -1, -1):
 				for r in involved_registers:
 					brightness = 1 - (f - 2*l)/self.fps * 1.0
-					col = self.dim_color(ORANGE, brightness)
+					col = self.dim_color(WHITE, brightness)
 					self._set_color(r[i], col)
 
 		self._update()
@@ -442,6 +466,30 @@ class LEDs():
 		leds = LEDS_RIGHT_FRONT + LEDS_LEFT_FRONT + LEDS_RIGHT_BACK + LEDS_LEFT_BACK
 		for i in range(len(leds)):
 			self._set_color(leds[i], color)
+		self._update()
+		
+	def focus_tool_idle(self, frame, state_length=2):
+		leds = LEDS_FOCUS_TOOL
+		f_count = state_length * self.fps
+		dim = abs((frame/state_length % f_count*2) - (f_count-1))/f_count
+
+		color = self.dim_color(Color(64,64,64), dim)
+		l = len(leds)
+		for i in range(l):
+			if i == l-1:
+				self._set_color(leds[i], color)
+			else:
+				self._set_color(leds[i], OFF)
+		self._update()
+		
+	def focus_tool_state(self, frame, states):
+		for i in range(len(states)):
+			idx, state = states[i]
+			color = FOCUS_TOOL_COLORS.get(state, OFF)
+			if(state == "P" and (frame % 10) > 5):
+				color = OFF
+			if(color != None):
+				self._set_color(LEDS_FOCUS_TOOL[idx], color)
 		self._update()
 
 	def dim_color(self, col, brightness):
@@ -703,6 +751,19 @@ class LEDs():
 					except:
 						self.logger.exception("Error in flash_color command: {}".format(self.state))
 						self.set_state_unknown()
+				elif my_state in COMMANDS['FOCUS_TOOL_IDLE']:
+					self.focus_tool_idle(self.frame)
+				elif my_state in COMMANDS['FOCUS_TOOL_STATE']:
+					states = []
+					try:
+						while(len(params) >= 2):
+							led_idx = int(params.pop(0))
+							led_status = params.pop(0)
+							states.append( (led_idx, led_status) )
+							
+						self.focus_tool_state(self.frame, states)
+					except:
+						self.logger.exception("Error in focus_tool_state command: {}".format(self.state))
 
 				# stuff
 				elif my_state in COMMANDS['FPS']:
@@ -774,3 +835,6 @@ class LEDs():
 			self.logger.exception("_get_int_val() Cant convert value '%s' to int. Using 0 as value. ", value)
 			return 0
 		return value
+
+
+
