@@ -57,8 +57,11 @@ COMMANDS = dict(
 	IGNORE_NEXT_COMMAND        = ['ignore_next_command'],
 	IGNORE_STOP                = ['ignore_stop'],
 
-	LISTENING                  = ['Listening', '_listening', 'listening'],
-	STARTUP                    = ['Startup'],
+	LISTENING                  = ['Listening', '_listening', 'listening', 'Startup'],
+	LISTENING_COLOR            = ['listening_color'],
+	LISTENING_WIFI             = ['listening_wifi'],
+	LISTENING_AP               = ['listening_ap'],
+
 	CLIENT_OPENED              = ['ClientOpened'],
 	CLIENT_CLOSED              = ['ClientClosed'],
 	ERROR                      = ['Error'],
@@ -268,21 +271,20 @@ class LEDs():
 					self._set_color(r[i], OFF)
 		self._update()
 
-	def listening(self, frame, state_length=2):
+	def listening(self, frame, color=ORANGE, state_length=2):
 		involved_registers = [LEDS_RIGHT_FRONT, LEDS_LEFT_FRONT, LEDS_RIGHT_BACK, LEDS_LEFT_BACK]
 		l = len(LEDS_RIGHT_BACK)
 
 		f_count = state_length * self.fps
 		dim = abs((frame/state_length % f_count*2) - (f_count-1))/f_count
 
-		color = self.dim_color(ORANGE, dim)
+		dim_color = self.dim_color(color, dim)
 		for r in involved_registers:
 			for i in range(l):
 				if i == l-1:
-					self._set_color(r[i], color)
+					self._set_color(r[i], dim_color)
 				else:
 					self._set_color(r[i], OFF)
-
 		self._update()
 
 	def all_on(self):
@@ -584,7 +586,21 @@ class LEDs():
 
 				# Daemon listening
 				if my_state in COMMANDS['LISTENING']:
-					self.listening(self.frame)
+					self.listening(self.frame, color=ORANGE)
+				elif my_state in COMMANDS['LISTENING_WIFI']:
+					self.listening(self.frame, color=WHITE)
+				elif my_state in COMMANDS['LISTENING_AP']:
+					self.listening(self.frame, color=ORANGE)
+				elif my_state in COMMANDS['LISTENING_COLOR']:
+					try:
+						r = int(params.pop(0))
+						g = int(params.pop(0))
+						b = int(params.pop(0))
+						state_length = int(params.pop(0)) if len(params) > 0 else 2
+						self.listening(self.frame, color=Color(r, g, b), state_length=state_length)
+					except:
+						self.logger.exception("Error in listening_color command: {}".format(self.state))
+						self.set_state_unknown()
 
 				# test purposes
 				elif my_state in COMMANDS['ON']:
@@ -594,9 +610,6 @@ class LEDs():
 					self.rollback(2)
 
 				# Server
-				elif my_state in COMMANDS['STARTUP']:
-					self.listening(self.frame)
-					# self.idle(self.frame, color=Color(20, 20, 20), fps=10)
 				elif my_state in COMMANDS['CLIENT_OPENED']:
 					self.idle(self.frame)
 				elif my_state in COMMANDS['CLIENT_CLOSED']:
