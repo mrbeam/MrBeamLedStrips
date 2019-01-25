@@ -611,7 +611,7 @@ class LEDs():
 				interior = WHITE
 
 				# Daemon listening
-				if my_state in COMMANDS['LISTENING']:
+				if my_state in COMMANDS['LISTENING'] or my_state in COMMANDS['UNKNOWN']:
 					interior = None # skip interior
 					self.breathing_static(self.frame, color=ORANGE, dim=0.2)
 				elif my_state in COMMANDS['LISTENING_WIFI']:
