@@ -271,12 +271,37 @@ class LEDs():
 					self._set_color(r[i], OFF)
 		self._update()
 
-	def listening(self, frame, color=ORANGE, state_length=2):
+	def breathing(self, frame, color=ORANGE, state_length=2):
 		involved_registers = [LEDS_RIGHT_FRONT, LEDS_LEFT_FRONT, LEDS_RIGHT_BACK, LEDS_LEFT_BACK]
 		l = len(LEDS_RIGHT_BACK)
 
 		f_count = state_length * self.fps
-		dim = abs((frame/state_length % f_count*2) - (f_count-1))/f_count
+		dim = 1 - (abs((frame/state_length % f_count*2) - (f_count-1))/f_count)
+
+		dim_color = self.dim_color(color, dim)
+		for r in involved_registers:
+			for i in range(l):
+				if i == l-1:
+					self._set_color(r[i], dim_color)
+				else:
+					self._set_color(r[i], OFF)
+		self._update()
+
+	def breathing_static(self, frame, color=ORANGE, dim=0.2):
+		involved_registers = [LEDS_RIGHT_FRONT, LEDS_LEFT_FRONT, LEDS_RIGHT_BACK, LEDS_LEFT_BACK]
+		l = len(LEDS_RIGHT_BACK)
+
+		state_length = 2
+		f_count = state_length * self.fps
+		dim_breath = 1 - (abs((frame / state_length % f_count * 2) - (f_count - 1)) / f_count)
+		if self._last_interior != WHITE and frame < f_count and dim_breath < 1.0:
+			interior_color = self.dim_color(WHITE, dim_breath)
+			self.set_interior(interior_color, perform_update=False)
+		else:
+			self.set_interior(WHITE, perform_update=False)
+		if frame < f_count and dim_breath < dim:
+			self.breathing(frame, color=color, state_length=state_length)
+			return
 
 		dim_color = self.dim_color(color, dim)
 		for r in involved_registers:
@@ -289,6 +314,7 @@ class LEDs():
 
 	def all_on(self):
 		involved_registers = [LEDS_RIGHT_FRONT, LEDS_LEFT_FRONT, LEDS_RIGHT_BACK, LEDS_LEFT_BACK]
+		l = len(LEDS_RIGHT_BACK)
 
 		color = WHITE
 		for r in involved_registers:
@@ -454,15 +480,15 @@ class LEDs():
 			myColor = OFF
 		self.static_color(myColor)
 
-	def set_interior(self, color):
+	def set_interior(self, color, perform_update=True):
 		if self._last_interior != color:
 			self._last_interior = color
 			leds = LEDS_INSIDE
 			l = len(leds)
 			for i in range(l):
 				self._set_color(leds[i], color)
-
-			self._update()
+			if perform_update:
+				self._update()
 
 	def static_color(self, color=WHITE):
 		leds = LEDS_RIGHT_FRONT + LEDS_LEFT_FRONT + LEDS_RIGHT_BACK + LEDS_LEFT_BACK
@@ -586,18 +612,19 @@ class LEDs():
 
 				# Daemon listening
 				if my_state in COMMANDS['LISTENING']:
-					self.listening(self.frame, color=ORANGE)
+					interior = None # skip interior
+					self.breathing_static(self.frame, color=ORANGE, dim=0.2)
 				elif my_state in COMMANDS['LISTENING_WIFI']:
-					self.listening(self.frame, color=WHITE)
+					self.breathing(self.frame, color=WHITE)
 				elif my_state in COMMANDS['LISTENING_AP']:
-					self.listening(self.frame, color=ORANGE)
+					self.breathing(self.frame, color=ORANGE)
 				elif my_state in COMMANDS['LISTENING_COLOR']:
 					try:
 						r = int(params.pop(0))
 						g = int(params.pop(0))
 						b = int(params.pop(0))
 						state_length = int(params.pop(0)) if len(params) > 0 else 2
-						self.listening(self.frame, color=Color(r, g, b), state_length=state_length)
+						self.breathing(self.frame, color=Color(r, g, b), state_length=state_length)
 					except:
 						self.logger.exception("Error in listening_color command: {}".format(self.state))
 						self.set_state_unknown()
@@ -613,7 +640,7 @@ class LEDs():
 				elif my_state in COMMANDS['CLIENT_OPENED']:
 					self.idle(self.frame)
 				elif my_state in COMMANDS['CLIENT_CLOSED']:
-					self.listening(self.frame)
+					self.breathing(self.frame)
 					# self.idle(self.frame, color=Color(20, 20, 20), fps=10)
 
 				# Machine
@@ -802,7 +829,8 @@ class LEDs():
 					self.idle(self.frame, color=Color(20, 20, 20), state_length=2)
 
 				# set interior at the end
-				self.set_interior(interior)
+				if interior is not None:
+					self.set_interior(interior)
 
 				self.frame += 1
 				time.sleep(self.frame_duration)
