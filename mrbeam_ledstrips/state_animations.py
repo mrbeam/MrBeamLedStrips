@@ -293,15 +293,11 @@ class LEDs():
 
 		state_length = 2
 		f_count = state_length * self.fps
-		dim_breath = 1 - (abs((frame / state_length % f_count * 2) - (f_count - 1)) / f_count)
-		if self._last_interior != WHITE and frame < f_count and dim_breath < 1.0:
-			interior_color = self.dim_color(WHITE, dim_breath)
-			self.set_interior(interior_color, perform_update=False)
-		else:
-			self.set_interior(WHITE, perform_update=False)
-		if frame < f_count and dim_breath < dim:
-			self.breathing(frame, color=color, state_length=state_length)
-			return
+		if frame < f_count:
+			dim_breath = 1 - (abs((frame / state_length % f_count * 2) - (f_count - 1)) / f_count)
+			if dim_breath < dim:
+				self.breathing(frame, color=color, state_length=state_length)
+				return
 
 		dim_color = self.dim_color(color, dim)
 		for r in involved_registers:
@@ -311,6 +307,19 @@ class LEDs():
 				else:
 					self._set_color(r[i], OFF)
 		self._update()
+
+	def interior_fade_in(self, frame, force=False):
+		state_length = 2
+		f_count = state_length * self.fps
+		interior_color = WHITE
+		if frame < f_count:
+			if force and self._last_interior == WHITE and frame == 0:
+				interior_color = OFF
+			elif self._last_interior != WHITE:
+				dim_breath = 1 - (abs((frame / state_length % f_count * 2) - (f_count - 1)) / f_count)
+				if dim_breath < 1.0:
+					interior_color = self.dim_color(WHITE, dim_breath)
+		self.set_interior(interior_color, perform_update=False)
 
 	def all_on(self):
 		involved_registers = [LEDS_RIGHT_FRONT, LEDS_LEFT_FRONT, LEDS_RIGHT_BACK, LEDS_LEFT_BACK]
@@ -613,6 +622,7 @@ class LEDs():
 				# Daemon listening
 				if my_state in COMMANDS['LISTENING'] or my_state in COMMANDS['UNKNOWN']:
 					interior = None # skip interior
+					self.interior_fade_in(self.frame)
 					self.breathing_static(self.frame, color=ORANGE, dim=0.2)
 				elif my_state in COMMANDS['LISTENING_WIFI']:
 					self.breathing(self.frame, color=WHITE)
@@ -833,6 +843,9 @@ class LEDs():
 					self.set_interior(interior)
 
 				self.frame += 1
+				if self.frame < 0:
+					# int overflow
+					self.frame = 0
 				time.sleep(self.frame_duration)
 
 		except KeyboardInterrupt:
