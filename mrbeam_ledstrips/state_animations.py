@@ -59,8 +59,10 @@ COMMANDS = dict(
 
 	LISTENING                  = ['Listening', '_listening', 'listening', 'Startup'],
 	LISTENING_COLOR            = ['listening_color'],
-	LISTENING_WIFI             = ['listening_wifi'],
+	LISTENING_NET              = ['listening_net', 'listening_network'],
 	LISTENING_AP               = ['listening_ap'],
+	LISTENING_AP_AND_NET       = ['listening_ap_and_net', 'listening_net_and_ap'],
+	LISTENING_FINDMRBEAM       = ['listening_findmrbeam', 'listening_find', 'listening_findmymrbeam'],
 
 	CLIENT_OPENED              = ['ClientOpened'],
 	CLIENT_CLOSED              = ['ClientClosed'],
@@ -271,20 +273,25 @@ class LEDs():
 					self._set_color(r[i], OFF)
 		self._update()
 
-	def breathing(self, frame, color=ORANGE, state_length=2):
+	def breathing(self, frame, color=ORANGE, bg_color=OFF, state_length=2):
 		involved_registers = [LEDS_RIGHT_FRONT, LEDS_LEFT_FRONT, LEDS_RIGHT_BACK, LEDS_LEFT_BACK]
 		l = len(LEDS_RIGHT_BACK)
 
 		f_count = state_length * self.fps
 		dim = 1 - (abs((frame/state_length % f_count*2) - (f_count-1))/f_count)
 
-		dim_color = self.dim_color(color, dim)
+		my_color = color
+		if isinstance(color, (list,)):
+			color_index = int(frame / f_count / 2) % len(color)
+			my_color = color[color_index]
+		dim_color = self.dim_color(my_color, dim)
+
 		for r in involved_registers:
 			for i in range(l):
-				if i == l-1:
+				if i >= l-(1 if bg_color==OFF else 2):
 					self._set_color(r[i], dim_color)
 				else:
-					self._set_color(r[i], OFF)
+					self._set_color(r[i], bg_color)
 		self._update()
 
 	def breathing_static(self, frame, color=ORANGE, dim=0.2):
@@ -623,18 +630,22 @@ class LEDs():
 				if my_state in COMMANDS['LISTENING'] or my_state in COMMANDS['UNKNOWN']:
 					interior = None # skip interior
 					self.interior_fade_in(self.frame)
-					self.breathing_static(self.frame, color=ORANGE, dim=0.2)
-				elif my_state in COMMANDS['LISTENING_WIFI']:
+					self.breathing_static(self.frame, color=WHITE, dim=0.05)
+				elif my_state in COMMANDS['LISTENING_NET']:
 					self.breathing(self.frame, color=WHITE)
 				elif my_state in COMMANDS['LISTENING_AP']:
+					self.breathing(self.frame, color=Color(150, 255, 0))
+				elif my_state in COMMANDS['LISTENING_AP_AND_NET']:
+					self.breathing(self.frame, color=[Color(150, 255, 0), WHITE])
+				elif my_state in COMMANDS['LISTENING_FINDMRBEAM']:
 					self.breathing(self.frame, color=ORANGE)
 				elif my_state in COMMANDS['LISTENING_COLOR']:
 					try:
-						r = int(params.pop(0))
-						g = int(params.pop(0))
-						b = int(params.pop(0))
-						state_length = int(params.pop(0)) if len(params) > 0 else 2
-						self.breathing(self.frame, color=Color(r, g, b), state_length=state_length)
+						color = Color(int(params.pop(0)), int(params.pop(0)), int(params.pop(0)))
+						bg_color = OFF
+						if len(params) >= 3:
+							bg_color = Color(int(params.pop(0)), int(params.pop(0)), int(params.pop(0)))
+						self.breathing(self.frame, color=color, state_length=2, bg_color=bg_color)
 					except:
 						self.logger.exception("Error in listening_color command: {}".format(self.state))
 						self.set_state_unknown()
