@@ -57,7 +57,7 @@ COMMANDS = dict(
 	IGNORE_NEXT_COMMAND        = ['ignore_next_command'],
 	IGNORE_STOP                = ['ignore_stop'],
 
-	LISTENING                  = ['Listening', '_listening', 'listening', 'Startup'],
+	LISTENING                  = ['listening', 'Listening', '_listening', 'Startup'],
 	LISTENING_COLOR            = ['listening_color'],
 	LISTENING_NET              = ['listening_net', 'listening_network'],
 	LISTENING_AP               = ['listening_ap'],
@@ -294,17 +294,18 @@ class LEDs():
 					self._set_color(r[i], bg_color)
 		self._update()
 
-	def breathing_static(self, frame, color=ORANGE, dim=0.2):
+	def breathing_static(self, frame, color=ORANGE, dim=0.2, fade_in=True):
 		involved_registers = [LEDS_RIGHT_FRONT, LEDS_LEFT_FRONT, LEDS_RIGHT_BACK, LEDS_LEFT_BACK]
 		l = len(LEDS_RIGHT_BACK)
 
-		state_length = 2
-		f_count = state_length * self.fps
-		if frame < f_count:
-			dim_breath = 1 - (abs((frame / state_length % f_count * 2) - (f_count - 1)) / f_count)
-			if dim_breath < dim:
-				self.breathing(frame, color=color, state_length=state_length)
-				return
+		if fade_in:
+			state_length = 2
+			f_count = state_length * self.fps
+			if frame < f_count:
+				dim_breath = 1 - (abs((frame / state_length % f_count * 2) - (f_count - 1)) / f_count)
+				if dim_breath < dim:
+					self.breathing(frame, color=color, state_length=state_length)
+					return
 
 		dim_color = self.dim_color(color, dim)
 		for r in involved_registers:
