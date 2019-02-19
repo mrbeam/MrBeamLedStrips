@@ -12,6 +12,8 @@ import sys
 import threading
 import logging
 
+from analytics import send_log_event
+
 # LED strip configuration:
 # Serial numbering of LEDs on the Mr Beam modules
 # order is top -> down
@@ -191,6 +193,7 @@ class LEDs():
 		else:
 			self.logger.info('Spread Spectrum not supported. Install Mr Beams custom rpi_ws281x instead of stock version.')
 		self.strip.begin()  # Init the LED-strip
+		send_log_event(logging.INFO, 'This is my Test String to log')
 
 	def change_state(self, nu_state):
 		with self.lock:
