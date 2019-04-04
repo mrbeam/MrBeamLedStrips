@@ -23,7 +23,7 @@ How to integrate this mrb analytics module:
 	__builtin__.__package_path__ = os.path.dirname(__file__)
 - in any relevant file:
 - - import analytics file as analytics
-- - Hook into exception method of your logger: analytics.hook_into_exception_function(self.logger)
+- - Hook into exception method of your logger: analytics.hook_into_logger(self.logger)
 - to send a mesage to analytics, call analytics.send_log_event(level, msg, params)
 
 """
@@ -35,10 +35,21 @@ TYPE_LOGEVENT = 'log_event'
 
 RETRIES_WAIT_TIMES = [1.0, 2.0, 5.0, 10.0]
 
+ANALYTICS_THREAD_NAME = 'send_analytics'
+
 _logger = logging.getLogger(__name__)
+_analytics_queue = []
+_analytics_thread = None
 
 
 def send_log_event(level, msg, *args, **kwargs):
+	"""
+	Sends an analytics log_event to octoprint
+	:param level:
+	:param msg:
+	:param args:
+	:param kwargs:
+	"""
 	msg = msg % args if args and msg else msg
 
 	exception_str = None
@@ -73,53 +84,81 @@ def send_log_event(level, msg, *args, **kwargs):
 	_send_analytics(TYPE_LOGEVENT, data)
 
 
-def hook_into_exception_function(logger):
+def hook_into_logger(logger):
+	"""
+	hooks into .exception an .error methods of the given logger.
+	:param logger:
+	"""
 	try: __package_path__
 	except NameError:
 		_logger.error("__package_path__ must be defined in package's __init__.py like this: import os, __builtin__; __builtin__.__package_path__ = os.path.dirname(__file__)")
-	logger.exception = types.MethodType(_exception_overwirte, logger)
+	logger.exception = types.MethodType(_exception_overwrite, logger)
+	logger.error = types.MethodType(_error_overwrite, logger)
 
 
-def _exception_overwirte(self, msg, *args, **kwargs):
-	# id = self.name
+def _exception_overwrite(self, msg, *args, **kwargs):
 	kwargs['exc_info'] = 1
+	self.log(logging.ERROR, msg, *args, **kwargs)
 	send_log_event(logging.ERROR, msg, *args, **kwargs)
-	self.error(msg, *args, **kwargs)
+
+def _error_overwrite(self, msg, *args, **kwargs):
+	analytics = kwargs.pop('analytics', True)
+	self.log(logging.ERROR, msg, *args, **kwargs)
+	if analytics:
+		send_log_event(logging.ERROR, msg, *args, **kwargs)
 
 
 def _send_analytics(type, data):
+	global _logger, _analytics_thread, _analytics_queue
+	_logger.debug("Sending analytics data: %s %s", type, data)
 	package = dict(
 		component=COMPONENT_NAME,
 		component_version=_get_version_string(),
 		type=type,
 		data=json.dumps(data, sort_keys=False)
 	)
-	thread = threading.Thread(target=_send_analytics_threaded, kwargs=dict(package=package, retries=len(RETRIES_WAIT_TIMES)), name='send_analytics')
-	thread.daemon = True
-	thread.start()
+
+	# a dedicated sending thread prevents the system from beeing flooded with too many analytics data
+	_analytics_queue.append(package)
+
+	if not _analytics_thread:
+		_analytics_thread = threading.Thread(target=_send_thread, name=ANALYTICS_THREAD_NAME)
+		_analytics_thread.daemon = True
+		_analytics_thread.start()
 
 
-def _send_analytics_threaded(package, retries):
+def _send_thread():
+	global _logger, _analytics_thread, _analytics_queue
 	try:
-		cmd = ['/home/pi/oprint/bin/octoprint', 'plugins', 'mrbeam:analytics',
-		       '{}'.format(package['component']),
-		       '{}'.format(package['component_version']),
-		       '{}'.format(package['type']),
-		       '{}'.format(package['data']),
-		       ]
+		while _analytics_queue:
+			package = _analytics_queue.pop(0)
+			retries = len(RETRIES_WAIT_TIMES)
+			cmd = ['/home/pi/oprint/bin/octoprint', 'plugins', 'mrbeam:analytics',
+			       '{}'.format(package['component']),
+			       '{}'.format(package['component_version']),
+			       '{}'.format(package['type']),
+			       '{}'.format(package['data']),
+			       ]
 
-		res = _exec_as_user(cmd_list=cmd, user_name='pi')
-
-		if not res and retries > 0:
-			sleep_time = RETRIES_WAIT_TIMES[retries * -1]
-			time.sleep(sleep_time)
-			retries -= 1
-			_send_analytics_threaded(package, retries)
+			while retries >= 0:
+				res = _exec_as_user(cmd_list=cmd, user_name='pi')
+				if res:
+					break
+				sleep_time = RETRIES_WAIT_TIMES[retries * -1]
+				time.sleep(sleep_time)
+				retries -= 1
+		_analytics_thread = None
+		return
 	except:
-		_logger.exception("Exception in _send_analytics_threaded(): ")
+		_logger.log(logging.ERROR, "Exception in _send_thread() ", exc_info=True)
 
 
 def _get_version_string():
+	try:
+		from _version import __version__
+		return __version__
+	except:
+		pass
 	try:
 		return pkg_resources.get_distribution(COMPONENT_NAME).version
 	except:
@@ -127,35 +166,34 @@ def _get_version_string():
 
 
 def _exec_as_user(cmd_list, user_name):
-    pw_record = pwd.getpwnam(user_name)
-    user_name      = pw_record.pw_name
-    user_home_dir  = pw_record.pw_dir
-    cwd            = pw_record.pw_dir
-    user_uid       = pw_record.pw_uid
-    user_gid       = pw_record.pw_gid
-    env = os.environ.copy()
-    env[ 'HOME'     ]  = user_home_dir
-    env[ 'LOGNAME'  ]  = user_name
-    env[ 'PWD'      ]  = cwd
-    env[ 'USER'     ]  = user_name
-    process = subprocess.Popen(
-	    cmd_list, preexec_fn=_demote(user_uid, user_gid), cwd=cwd, env=env, stdout=subprocess.PIPE, stderr=subprocess.PIPE
-    )
-    stdout, stderr = process.communicate()
-    returncode = process.returncode
+	global _logger
+	pw_record = pwd.getpwnam(user_name)
+	user_name      = pw_record.pw_name
+	user_home_dir  = pw_record.pw_dir
+	cwd            = pw_record.pw_dir
+	user_uid       = pw_record.pw_uid
+	user_gid       = pw_record.pw_gid
+	env = os.environ.copy()
+	env[ 'HOME'     ]  = user_home_dir
+	env[ 'LOGNAME'  ]  = user_name
+	env[ 'PWD'      ]  = cwd
+	env[ 'USER'     ]  = user_name
+	process = subprocess.Popen(cmd_list, preexec_fn=_demote(user_uid, user_gid), cwd=cwd, env=env, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+	stdout, stderr = process.communicate()
+	returncode = process.returncode
 
-    logging.info("exec_as_user() ran as user '%s' (uid:%s, gid:%s) returncode: %s, cmd: %s, cwd: %s, env: %s", user_name, user_uid, user_gid, returncode, cmd_list, cwd, env)
-    if returncode != 0:
-        logging.warn("exec_as_user() ran as user '%s' (uid:%s, gid:%s) returncode: %s, stdout: %s", user_name, user_uid, user_gid, returncode, stdout)
+	# _logger.debug("exec_as_user() ran as user '%s' (uid:%s, gid:%s) returncode: %s, cmd: %s, cwd: %s, env: %s", user_name, user_uid, user_gid, returncode, cmd_list, cwd, env)
+	if returncode != 0:
+		_logger.warn("exec_as_user() ran as user '%s' (uid:%s, gid:%s) returncode: %s, stdout: %s", user_name, user_uid, user_gid, returncode, stdout)
 
-    return returncode == 0
+	return returncode == 0
 
 
 def _demote(user_uid, user_gid):
-    def result():
-        os.setgid(user_gid)
-        os.setuid(user_uid)
-    return result
+	def result():
+		os.setgid(user_gid)
+		os.setuid(user_uid)
+	return result
 
 
 

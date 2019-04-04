@@ -1,3 +1,4 @@
+# coding=utf-8
 # Library to visualize the Mr Beam Machine States with the SK6812 LEDs
 # Author: Teja Philipp (teja@mr-beam.org)
 # using https://github.com/jgarff/rpi_ws281x
@@ -12,7 +13,6 @@ import sys
 import threading
 import logging
 
-# from analytics import send_log_event, upadte_exception_method
 import mrbeam_ledstrips.analytics as analytics
 
 # LED strip configuration:
@@ -149,7 +149,7 @@ class LEDs():
 	def __init__(self, config):
 		self.config = config
 		self.logger = logging.getLogger(__name__)
-		analytics.hook_into_exception_function(self.logger)
+		analytics.hook_into_logger(self.logger)
 
 		print("LEDs staring up with config: %s" % self.config)
 		self.logger.info("LEDs staring up with config: %s", self.config)
@@ -219,9 +219,8 @@ class LEDs():
 			if self.state == nu_state or nu_state in COMMANDS['IGNORE_NEXT_COMMAND'] or nu_state in COMMANDS['IGNORE_STOP']:
 				return "OK {state}   # {old} -> {nu}".format(old=old_state, nu=nu_state, state=self.state)
 			else:
-				analytics.send_log_event(logging.WARNING, "Unknown state '%s'", nu_state)
+				analytics.send_log_event(logging.WARNING, "Unknown state: %s", nu_state)
 				return "ERROR {state}   # {old} -> {nu}".format(old=old_state, nu=self.state, state=nu_state)
-			# return "State change: '{old}' -> '{nu}' - current: '{current}'".format(old=old_state, nu=nu_state, current=self.state)
 
 	def clean_exit(self, signal, msg):
 		print 'shutting down, signal was: %s' % signal
