@@ -10,7 +10,7 @@ the machine state of Mr Beam II over a unix domain socket.
 """
 
 EXTRAS_FOLDERS = [
-    ('/etc/mrbeam_ledstrips.conf.d', 0755)
+    ('/etc/mrbeam_ledstrips.conf.d', 0755),
     ('/usr/share/mrbeam_ledstrips/png', 0755)
 ]
 
