@@ -8,6 +8,8 @@ from __future__ import division
 import signal
 from neopixel import *
 import _rpi_ws281x as ws
+import cv2
+		
 import time
 import sys
 import threading
@@ -96,6 +98,7 @@ COMMANDS = dict(
 	LASER_JOB_DONE             = ['LaserJobDone'],
 	LASER_JOB_CANCELLED        = ['LaserJobCancelled'],
 	LASER_JOB_FAILED           = ['LaserJobFailed'],
+	PNG_ANIMATION              = ['png'],
 
 	WHITE                      = ['white', 'all_white'],
 	RED                        = ['red', 'all_red'],
@@ -172,6 +175,8 @@ class LEDs():
 		self.update_required = False
 		self._last_interior = None
 		self.ignore_next_command = None
+		
+		self.png_animations = dict()
 
 	def _init_strip(self, freq_hz, spread_spectrum_enabled,
 					spread_spectrum_random=False,
@@ -232,6 +237,53 @@ class LEDs():
 		for i in range(self.strip.numPixels()):
 			self._set_color(i, OFF)
 		self._update()
+
+	def load_png(self, filename):
+		# check cache
+		if(self.png_animations[filename]):
+			return self.png_animations[filename]
+		
+		# load png
+		path_to_png = os.path.join(self.config['png_folder'], filename)
+		
+		# check if exists, is_readable, file_size
+		if os.path.isfile(path_to_png) and os.path.getsize(path_to_png) < 100*1024: #max 100kB
+			img_4channel = cv2.imread(path_to_png, cv2.IMREAD_UNCHANGED)
+			height, width = img_4channel.shape
+			
+			# check size
+			if(width < self.config['led_count']):
+				return None # abort if img is too small. 
+			else:
+				animation = [None]*height
+				rgb = img_4channel[:,:,:3]
+				for row in range(height):
+					line = [None]*self.config['led_count']
+					for col in range(self.config['led_count']):
+						r,g,b = rgb[row, col]
+						line[col] = Color(r,g,b)
+					animation[row] = line
+				self.png_animations['filename'] = animation
+				return animation
+		else:
+			return None
+
+		
+
+	def png(self, png_filename, frame, state_length=1):
+		# load png / check cache
+		animation = self.load_png(png_filename)
+		
+		if(animation != None):
+			# render frame
+			row = int(round(frame / state_length)) % height
+
+			for led in range(self.config['led_count']):
+				color = animation[row][led]
+				self._set_color(led, color)
+
+			self._update()
+
 
 	def fade_off(self, state_length=0.5, follow_state='ClientOpened'):
 		involved_registers = [LEDS_RIGHT_FRONT, LEDS_LEFT_FRONT, LEDS_RIGHT_BACK, LEDS_LEFT_BACK]
@@ -756,6 +808,8 @@ class LEDs():
 						self.flash(self.frame, color=WHITE, state_length=1)
 
 				# other
+				elif my_state in COMMANDS['PNG_ANIMATIONS']: # mrbeamledstrips_cli png:test.png
+					self.png(params.pop(0), self.frame, state_length=1)
 				elif my_state in COMMANDS['OFF']:
 					self.off()
 					interior = OFF
