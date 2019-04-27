@@ -10,6 +10,7 @@ from neopixel import *
 import _rpi_ws281x as ws
 import cv2
 		
+import os
 import time
 import sys
 import threading
@@ -141,7 +142,10 @@ def get_default_config():
 		spread_spectrum_hopping_delay_ms = 50,
 
 		# default frames per second
-		frames_per_second 				 = 28
+		frames_per_second 				 = 28,
+		
+		# max png file size 30 kB
+		max_png_size = 30 * 1024
 	)
 
 
@@ -239,44 +243,80 @@ class LEDs():
 		self._update()
 
 	def load_png(self, filename):
+		"""
+		Loads a png image as LED animation:
+		- each pixel row is one frame, cycling from top to bottom
+		- with 7..45 px: first 7 pixels of each line are used for the corner LEDs, inside LEDs are white
+		- with >= 46 px: first 46 pixels of each line are copied 1:1 to the LED strip:
+		  (right back corner, right front corner, inside, left front corner, left back corner)
+		
+		state is named "png" with parameter "file.png". => mrbeamledstrips_cli png:breathe.png 
+		files are searched in pre-defined folder (default /usr/share/mrbeamledstrips/png/)
+		"""
+		
 		# check cache
-		if(self.png_animations[filename]):
+		if(self.png_animations.get(filename)):
 			return self.png_animations[filename]
 		
 		# load png
 		path_to_png = os.path.join(self.config['png_folder'], filename)
 		
 		# check if exists, is_readable, file_size
-		if os.path.isfile(path_to_png) and os.path.getsize(path_to_png) < 100*1024: #max 100kB
+		if os.path.isfile(path_to_png) and os.path.getsize(path_to_png) < self.config['max_png_size']: 
+			self.logger.info("loading png animation {}".format(filename))
 			img_4channel = cv2.imread(path_to_png, cv2.IMREAD_UNCHANGED)
-			height, width = img_4channel.shape
+			height, width, channels = img_4channel.shape
 			
 			# check size
-			if(width < self.config['led_count']):
-				return None # abort if img is too small. 
+			corner_leds = len(LEDS_RIGHT_BACK)
+			if(width < corner_leds):
+				self.logger.error("png dimension too small. Should have a minimum width of {} px. aborting... ".format(corner_leds))
+				return None # abort if img is too small.
 			else:
-				animation = [None]*height
+				# init animation array
 				rgb = img_4channel[:,:,:3]
+				animation = [None]*height
 				for row in range(height):
 					line = [None]*self.config['led_count']
-					for col in range(self.config['led_count']):
-						r,g,b = rgb[row, col]
-						line[col] = Color(r,g,b)
+					
+					if(width < self.config['led_count']): # small png => inside LEDs are white, all corner LEDs equal.
+						self.logger.info("small png => corner LEDs only")
+						for col in range(corner_leds):
+							b,g,r = rgb[row, corner_leds - 1 - col]
+							idx_rb = LEDS_RIGHT_BACK[col]
+							idx_rf = LEDS_RIGHT_FRONT[col]
+							idx_lf = LEDS_LEFT_FRONT[col]
+							idx_lb = LEDS_LEFT_BACK[col]
+							line[idx_rb] = Color(r,g,b) 
+							line[idx_rf] = Color(r,g,b) 
+							line[idx_lf] = Color(r,g,b) 
+							line[idx_lb] = Color(r,g,b) 
+							
+						for idx_in in LEDS_INSIDE:	
+							line[idx_in] = WHITE # all inside
+
+					else: # big png => all LEDs are individually controlled
+						for col in range(self.config['led_count']):
+							b,g,r = rgb[row, self.config['led_count'] - 1 - col]
+							line[col] = Color(r,g,b)
+					
 					animation[row] = line
-				self.png_animations['filename'] = animation
+					
+				self.png_animations[filename] = animation
 				return animation
 		else:
+			self.logger.error("png {} not found or file too large (max {} Byte)".format(path_to_png, self.config['max_png_size']))
 			return None
 
 		
 
 	def png(self, png_filename, frame, state_length=1):
-		# load png / check cache
 		animation = self.load_png(png_filename)
+		frames = len(animation)
 		
 		if(animation != None):
 			# render frame
-			row = int(round(frame / state_length)) % height
+			row = int(round(frame / state_length)) % frames
 
 			for led in range(self.config['led_count']):
 				color = animation[row][led]
@@ -666,7 +706,7 @@ class LEDs():
 				self.state = self.past_states.pop()
 			else:
 				self.state = COMMANDS['LISTENING'][0]
-			self.logger.warn("Rolleback: fallback to %s", self.state)
+			self.logger.warn("Rollback: fallback to %s", self.state)
 
 	def loop(self):
 		try:
@@ -808,8 +848,9 @@ class LEDs():
 						self.flash(self.frame, color=WHITE, state_length=1)
 
 				# other
-				elif my_state in COMMANDS['PNG_ANIMATIONS']: # mrbeamledstrips_cli png:test.png
-					self.png(params.pop(0), self.frame, state_length=1)
+				elif my_state in COMMANDS['PNG_ANIMATION']: # mrbeamledstrips_cli png:test.png
+					filename = params.pop(0)
+					self.png(filename, self.frame, state_length=1)
 				elif my_state in COMMANDS['OFF']:
 					self.off()
 					interior = OFF
