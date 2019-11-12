@@ -1,3 +1,4 @@
+# coding=utf-8
 from __future__ import absolute_import
 from __future__ import print_function
 import argparse
@@ -11,11 +12,13 @@ import yaml
 import os
 import pkg_resources
 from .state_animations import LEDs, COMMANDS, get_default_config
+import mrbeam_ledstrips.analytics as analytics
 
 
 class Server(object):
 	def __init__(self, server_address, led_config):
 		self.logger = logging.getLogger(__name__)
+		analytics.hook_into_logger(self.logger)
 
 		def exception_logger(exc_type, exc_value, exc_tb):
 			self.logger.error("Uncaught exception", exc_info=(exc_type, exc_value, exc_tb))
@@ -109,6 +112,8 @@ class Server(object):
 			# sock.close()
 			# os.unlink(server_address)
 			# self.leds.clean_exit(signal.SIGTERM, None)
+		except SystemExit:
+			pass
 		except:
 			self.logger.exception("Exception in socket monitor: ")
 		finally:
