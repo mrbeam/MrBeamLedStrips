@@ -617,6 +617,7 @@ class LEDs():
 		self.static_color(myColor)
 
 	def set_interior(self, color, perform_update=True):
+		color = self.dim_color(color, self.inside_brightness/255.0)
 		if self._last_interior != color:
 			self._last_interior = color
 			leds = LEDS_INSIDE
