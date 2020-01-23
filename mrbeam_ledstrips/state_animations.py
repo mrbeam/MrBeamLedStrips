@@ -41,6 +41,7 @@ GREEN =  Color(0, 255, 0)
 BLUE =   Color(0, 0, 255)
 YELLOW = Color(255, 200, 0)
 ORANGE = Color(226, 83, 3)
+RED2 =   Color(2, 0, 0)
 
 FOCUS_TOOL_COLORS = {
 	'O': Color(0,64,0), # OK
@@ -56,12 +57,13 @@ COMMANDS = dict(
 	DEBUG_STOP                 = ['DebugStop'],
 	ON                         = ['on', 'all_on'],
 	OFF                        = ['off', 'all_off'],
-	BRIGHTNESS                 = ['brightness'],
 	ROLLBACK                   = ['rollback'],
-	FPS                        = ['fps'],
-	SPREAD_SPECTRUM            = ['spread_spectrum'],
 	IGNORE_NEXT_COMMAND        = ['ignore_next_command'],
 	IGNORE_STOP                = ['ignore_stop'],
+
+	#  settings should be migrated to SETTINGS
+	FPS                        = ['fps'],
+	SPREAD_SPECTRUM            = ['spread_spectrum'],
 
 	LISTENING                  = ['listening', 'Listening', '_listening', 'Startup'],
 	LISTENING_COLOR            = ['listening_color'],
@@ -121,6 +123,10 @@ COMMANDS = dict(
 	FOCUS_TOOL_IDLE            = ['focus_tool_idle'],
 )
 
+SETTINGS = dict(
+	BRIGHTNESS                 = ['brightness', 'bright', 'b'],
+)
+
 def get_default_config():
 	# config file overrides these....
 	return dict(
@@ -129,8 +135,8 @@ def get_default_config():
 		led_freq_hz = 800000,    # LED signal frequency in Hz (usually 800kHz)
 		# led_freq_hz = 1200000, # for spreading on SPI pin....
 		led_dma = 10,            # DMA channel to use for generating signal. This produced a problem after changing to a
-                                 # newer kernerl version (https://github.com/jgarff/rpi_ws281x/issues/208). Changing it from
-                                 # the previous 5 to channel 10 solved it.
+								 # newer kernerl version (https://github.com/jgarff/rpi_ws281x/issues/208). Changing it from
+								 # the previous 5 to channel 10 solved it.
 		led_brigthness = 255,    # 0..255 / Dim if too much power is used.
 		led_invert = False,      # True to invert the signal (when using NPN transistor level shift)
 
@@ -214,6 +220,17 @@ class LEDs():
 				print("state change ignored! keeping: " + str(self.state) + ", ignored: " + str(nu_state))
 				return "IGNORED {state}   # {old} -> {nu}".format(old=self.state, nu=self.state, state=nu_state)
 
+			# Settings
+			if nu_state.startswith('set'):
+				token = nu_state.split(':')
+				_ = token.pop(0)
+				setting = token.pop(0)
+				val = self.set_setting(setting, token)
+				if val is None:
+					return "ERROR setting {setting} -> {val}".format(setting=setting, val=val)
+				else:
+					return "OK setting {setting} -> {val}".format(setting=setting, val=val)
+
 			old_state = self.state
 			if self.state != nu_state:
 				print("state change " + str(self.state) + " => " + str(nu_state))
@@ -232,9 +249,10 @@ class LEDs():
 				return "ERROR {state}   # {old} -> {nu}".format(old=old_state, nu=self.state, state=nu_state)
 
 	def clean_exit(self, signal, msg):
+		self.static_color(RED2)
 		print 'shutting down, signal was: %s' % signal
 		self.logger.info("shutting down, signal was: %s", signal)
-		self.off()
+		#self.off()
 		sys.exit(0)
 
 	def off(self):
@@ -514,14 +532,14 @@ class LEDs():
 	# 	involved_registers = [LEDS_RIGHT_FRONT, LEDS_LEFT_FRONT, LEDS_RIGHT_BACK, LEDS_LEFT_BACK]
 	# 	l = len(LEDS_RIGHT_BACK)
 	# 	c = int(round(frame / state_length)) % l
-    #
+	#
 	# 	for r in involved_registers:
 	# 		for i in range(l):
 	# 			if i == c:
 	# 				self._set_color(r[i], color)
 	# 			else:
 	# 				self._set_color(r[i], OFF)
-    #
+	#
 	# 	self._update()
 
 	def idle(self, frame, color=WHITE, state_length=1):
@@ -610,7 +628,7 @@ class LEDs():
 		for i in range(len(leds)):
 			self._set_color(leds[i], color)
 		self._update()
-		
+
 	def focus_tool_idle(self, frame, state_length=2):
 		leds = LEDS_FOCUS_TOOL
 		f_count = state_length * self.fps
@@ -624,7 +642,7 @@ class LEDs():
 			else:
 				self._set_color(leds[i], OFF)
 		self._update()
-		
+
 	def focus_tool_state(self, frame, states):
 		for i in range(len(states)):
 			idx, state = states[i]
@@ -712,6 +730,7 @@ class LEDs():
 		try:
 			self.frame = 0
 			while True:
+
 				data = self.state
 				if not data:
 					state_string = "off"  # self.demo_state(self.frame)
@@ -854,14 +873,6 @@ class LEDs():
 				elif my_state in COMMANDS['OFF']:
 					self.off()
 					interior = OFF
-				elif my_state in COMMANDS['BRIGHTNESS']:
-					bright = params.pop(0)
-					if bright > 255:
-						bright = 255
-					elif bright < 0:
-						bright = 0
-					self.brightness = bright
-					self.update_required = True
 
 				# colors
 				elif my_state in COMMANDS['WHITE']:
@@ -923,7 +934,7 @@ class LEDs():
 							led_idx = int(params.pop(0))
 							led_status = params.pop(0)
 							states.append( (led_idx, led_status) )
-							
+
 						self.focus_tool_state(self.frame, states)
 					except:
 						self.logger.exception("Error in focus_tool_state command: {}".format(self.state))
@@ -963,13 +974,32 @@ class LEDs():
 
 		except KeyboardInterrupt:
 			self.logger.exception("KeyboardInterrupt Exception in animation loop:")
-			self.clean_exit(signal.SIGTERM, None)
+			self.clean_exit(signal.SIGINT, None)
 		except:
 			self.logger.exception("Some Exception in animation loop:")
 			print("Some Exception in animation loop:")
 
 	def set_state_unknown(self):
 		self.state = COMMANDS['UNKNOWN'][0]
+
+
+	def set_setting(self, setting, params):
+		if setting in SETTINGS['BRIGHTNESS']:
+			return self.set_brightness(params[0])
+		else:
+			return None
+
+	def set_brightness(self, bright):
+		try:
+			bright = int(bright)
+		except:
+			return None
+		if bright > 255:
+			bright = 255
+		elif bright < 0:
+			bright = 0
+		self.brightness = bright
+		return self.brightness
 
 	def _set_color(self, i, color):
 		c = self.strip.getPixelColor(i)
