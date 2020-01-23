@@ -61,9 +61,6 @@ COMMANDS = dict(
 	IGNORE_NEXT_COMMAND        = ['ignore_next_command'],
 	IGNORE_STOP                = ['ignore_stop'],
 
-	#  settings should be migrated to SETTINGS
-	FPS                        = ['fps'],
-	SPREAD_SPECTRUM            = ['spread_spectrum'],
 
 	LISTENING                  = ['listening', 'Listening', '_listening', 'Startup'],
 	LISTENING_COLOR            = ['listening_color'],
@@ -124,7 +121,11 @@ COMMANDS = dict(
 )
 
 SETTINGS = dict(
+	FPS                        = ['fps'],
+	SPREAD_SPECTRUM            = ['spread_spectrum'],
 	BRIGHTNESS                 = ['brightness', 'bright', 'b'],
+	INSIDE_BRIGHTNESS                 = ['inside_brightness', 'ib'],
+	EDGE_BRIGHTNESS                 = ['edge_brightness', 'eb'],
 )
 
 def get_default_config():
@@ -180,6 +181,8 @@ class LEDs():
 		signal.signal(signal.SIGTERM, self.clean_exit)  # switch off the LEDs on exit
 		self.job_progress = 0
 		self.brightness = self.config['led_brigthness']
+		self.inside_brightness = 255
+		self.edge_brightness = 255
 		self.fps = self.config['frames_per_second']
 		self.frame_duration = self._get_frame_duration(self.fps)
 		self.update_required = False
@@ -686,26 +689,29 @@ class LEDs():
 		self.fps = fps
 		self.frame_duration = self._get_frame_duration(fps)
 		self.logger.info("set_fps() Changed animation speed: fps:%d (%s s/frame)" % (self.fps, self.frame_duration))
+		return fps
 
 	def spread_spectrum(self, params):
-		self.logger.info("spread_spectrum()")
-		enabled = params.pop(0)
+		enabled = params[0]
 		if enabled == 'off':
-			self._init_strip(LED_FREQ_HZ, False)
-			self.logger.info("spread_spectrum() off, led frequency is: %s", LED_FREQ_HZ)
+			self._init_strip(self.config['led_freq_hz'], False)
+			self.logger.info("spread_spectrum() off, led frequency is: %s", self.config['led_freq_hz'])
+			return enabled
 		elif enabled == 'on' and len(params) in (4,5):
 			try:
-				freq = int(params.pop(0))
-				bandwidth = int(params.pop(0))
-				channel_width = int(params.pop(0))
-				hopping_delay = int(params.pop(0))
-				random = params.pop(0).startswith('r') if len(params) > 0 else False
-				self.logger.info("spread_spectrum() on: freq=%s, bandwidth=%s, channel_width=%s, hopping_delay=%s, random:%s", freq, bandwidth, channel_width, hopping_delay, random)
+				freq = int(params[1])
+				bandwidth = int(params[2])
+				channel_width = int(params[3])
+				hopping_delay = int(params[4])
+				random = params[5].startswith('r') if len(params) > 5 else False
+				status = "freq=%s, bandwidth=%s, channel_width=%s, hopping_delay=%s, random:%s" % (freq, bandwidth, channel_width, hopping_delay, random)
+				self.logger.info("spread_spectrum() on: " + status)
 				self._init_strip(freq, True,
 					spread_spectrum_random=random,
 					spread_spectrum_bandwidth=bandwidth,
 					spread_spectrum_channel_width=channel_width,
 					spread_spectrum_hopping_delay_ms=hopping_delay)
+				return status
 			except:
 				self.logger.exception("spread_spectrum() Exception while executing command %s", self.state)
 		else:
@@ -940,12 +946,6 @@ class LEDs():
 						self.logger.exception("Error in focus_tool_state command: {}".format(self.state))
 
 				# stuff
-				elif my_state in COMMANDS['FPS']:
-					self.set_fps(params.pop(0))
-					self.rollback()
-				elif my_state in COMMANDS['SPREAD_SPECTRUM']:
-					self.spread_spectrum(params)
-					self.rollback()
 				elif my_state in COMMANDS['IGNORE_NEXT_COMMAND']:
 					self.ignore_next_command = my_state
 					self.rollback()
@@ -984,25 +984,66 @@ class LEDs():
 
 
 	def set_setting(self, setting, params):
+		self.logger.info('set_setting: setting %s, params %s', setting, params)
 		if setting in SETTINGS['BRIGHTNESS']:
 			return self.set_brightness(params[0])
+		elif setting in SETTINGS['INSIDE_BRIGHTNESS']:
+			return self.set_inside_brightness(params[0])
+		elif setting in SETTINGS['EDGE_BRIGHTNESS']:
+			return self.set_edge_brightness(params[0])
+		elif setting in SETTINGS['FPS']:
+			return self.set_fps(params[0])
+		elif setting in SETTINGS['SPREAD_SPECTRUM']:
+			return self.spread_spectrum(params)
 		else:
 			return None
 
 	def set_brightness(self, bright):
+		br = self._parse8bit(bright)
+		if(br):
+			self.brightness = br
+			return self.brightness
+		else:
+			return None
+	
+	def set_inside_brightness(self, bright):
+		br = self._parse8bit(bright)
+		self.logger.info('set_inside_brightness: %i', br)
+
+		if(br):
+			self.inside_brightness = br
+			self.update_required = True
+			return self.inside_brightness
+		else:
+			return None
+	
+	def set_edge_brightness(self, bright):
+		br = self._parse8bit(bright)
+		if(br):
+			self.edge_brightness = br
+			self.update_required = True
+			return self.edge_brightness
+		else:
+			return None
+
+	def _parse8bit(self, val):
 		try:
-			bright = int(bright)
+			val = int(val)
 		except:
 			return None
-		if bright > 255:
-			bright = 255
-		elif bright < 0:
-			bright = 0
-		self.brightness = bright
-		return self.brightness
+		if val > 255:
+			val = 255
+		elif val < 0:
+			val = 0
+		return val
 
 	def _set_color(self, i, color):
 		c = self.strip.getPixelColor(i)
+		if(i in LEDS_INSIDE):
+			color = self.dim_color(color, self.inside_brightness/255.0)
+			#self.logger.info('change_inside_brightness: %i, %i', i, color)
+		else:
+			color = self.dim_color(color, self.edge_brightness/255.0)
 		if(c != color):
 			self.strip.setPixelColor(i, color)
 			self.update_required = True
