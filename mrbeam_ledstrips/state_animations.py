@@ -8,6 +8,9 @@ from __future__ import division
 import signal
 from neopixel import *
 import _rpi_ws281x as ws
+import cv2
+		
+import os
 import time
 import sys
 import threading
@@ -58,9 +61,6 @@ COMMANDS = dict(
 	IGNORE_NEXT_COMMAND        = ['ignore_next_command'],
 	IGNORE_STOP                = ['ignore_stop'],
 
-	#  settings should be migrated to SETTINGS
-	FPS                        = ['fps'],
-	SPREAD_SPECTRUM            = ['spread_spectrum'],
 
 	LISTENING                  = ['listening', 'Listening', '_listening', 'Startup'],
 	LISTENING_COLOR            = ['listening_color'],
@@ -98,6 +98,7 @@ COMMANDS = dict(
 	LASER_JOB_DONE             = ['LaserJobDone'],
 	LASER_JOB_CANCELLED        = ['LaserJobCancelled'],
 	LASER_JOB_FAILED           = ['LaserJobFailed'],
+	PNG_ANIMATION              = ['png'],
 
 	WHITE                      = ['white', 'all_white'],
 	RED                        = ['red', 'all_red'],
@@ -120,7 +121,11 @@ COMMANDS = dict(
 )
 
 SETTINGS = dict(
+	FPS                        = ['fps'],
+	SPREAD_SPECTRUM            = ['spread_spectrum'],
 	BRIGHTNESS                 = ['brightness', 'bright', 'b'],
+	INSIDE_BRIGHTNESS                 = ['inside_brightness', 'ib'],
+	EDGE_BRIGHTNESS                 = ['edge_brightness', 'eb'],
 )
 
 def get_default_config():
@@ -144,7 +149,10 @@ def get_default_config():
 		spread_spectrum_hopping_delay_ms = 50,
 
 		# default frames per second
-		frames_per_second 				 = 28
+		frames_per_second 				 = 28,
+		
+		# max png file size 30 kB
+		max_png_size = 30 * 1024
 	)
 
 
@@ -173,11 +181,15 @@ class LEDs():
 		signal.signal(signal.SIGTERM, self.clean_exit)  # switch off the LEDs on exit
 		self.job_progress = 0
 		self.brightness = self.config['led_brigthness']
+		self.inside_brightness = 255
+		self.edge_brightness = 255
 		self.fps = self.config['frames_per_second']
 		self.frame_duration = self._get_frame_duration(self.fps)
 		self.update_required = False
 		self._last_interior = None
 		self.ignore_next_command = None
+		
+		self.png_animations = dict()
 
 	def _init_strip(self, freq_hz, spread_spectrum_enabled,
 					spread_spectrum_random=False,
@@ -250,6 +262,89 @@ class LEDs():
 		for i in range(self.strip.numPixels()):
 			self._set_color(i, OFF)
 		self._update()
+
+	def load_png(self, filename):
+		"""
+		Loads a png image as LED animation:
+		- each pixel row is one frame, cycling from top to bottom
+		- with 7..45 px: first 7 pixels of each line are used for the corner LEDs, inside LEDs are white
+		- with >= 46 px: first 46 pixels of each line are copied 1:1 to the LED strip:
+		  (right back corner, right front corner, inside, left front corner, left back corner)
+		
+		state is named "png" with parameter "file.png". => mrbeamledstrips_cli png:breathe.png 
+		files are searched in pre-defined folder (default /usr/share/mrbeamledstrips/png/)
+		"""
+		
+		# check cache
+		if(self.png_animations.get(filename)):
+			return self.png_animations[filename]
+		
+		# load png
+		path_to_png = os.path.join(self.config['png_folder'], filename)
+		
+		# check if exists, is_readable, file_size
+		if os.path.isfile(path_to_png) and os.path.getsize(path_to_png) < self.config['max_png_size']: 
+			self.logger.info("loading png animation {}".format(filename))
+			img_4channel = cv2.imread(path_to_png, cv2.IMREAD_UNCHANGED)
+			height, width, channels = img_4channel.shape
+			
+			# check size
+			corner_leds = len(LEDS_RIGHT_BACK)
+			if(width < corner_leds):
+				self.logger.error("png dimension too small. Should have a minimum width of {} px. aborting... ".format(corner_leds))
+				return None # abort if img is too small.
+			else:
+				# init animation array
+				rgb = img_4channel[:,:,:3]
+				animation = [None]*height
+				for row in range(height):
+					line = [None]*self.config['led_count']
+					
+					if(width < self.config['led_count']): # small png => inside LEDs are white, all corner LEDs equal.
+						self.logger.info("small png => corner LEDs only")
+						for col in range(corner_leds):
+							b,g,r = rgb[row, corner_leds - 1 - col]
+							idx_rb = LEDS_RIGHT_BACK[col]
+							idx_rf = LEDS_RIGHT_FRONT[col]
+							idx_lf = LEDS_LEFT_FRONT[col]
+							idx_lb = LEDS_LEFT_BACK[col]
+							line[idx_rb] = Color(r,g,b) 
+							line[idx_rf] = Color(r,g,b) 
+							line[idx_lf] = Color(r,g,b) 
+							line[idx_lb] = Color(r,g,b) 
+							
+						for idx_in in LEDS_INSIDE:	
+							line[idx_in] = WHITE # all inside
+
+					else: # big png => all LEDs are individually controlled
+						for col in range(self.config['led_count']):
+							b,g,r = rgb[row, self.config['led_count'] - 1 - col]
+							line[col] = Color(r,g,b)
+					
+					animation[row] = line
+					
+				self.png_animations[filename] = animation
+				return animation
+		else:
+			self.logger.error("png {} not found or file too large (max {} Byte)".format(path_to_png, self.config['max_png_size']))
+			return None
+
+		
+
+	def png(self, png_filename, frame, state_length=1):
+		animation = self.load_png(png_filename)
+		frames = len(animation)
+		
+		if(animation != None):
+			# render frame
+			row = int(round(frame / state_length)) % frames
+
+			for led in range(self.config['led_count']):
+				color = animation[row][led]
+				self._set_color(led, color)
+
+			self._update()
+
 
 	def fade_off(self, state_length=0.5, follow_state='ClientOpened'):
 		involved_registers = [LEDS_RIGHT_FRONT, LEDS_LEFT_FRONT, LEDS_RIGHT_BACK, LEDS_LEFT_BACK]
@@ -522,6 +617,7 @@ class LEDs():
 		self.static_color(myColor)
 
 	def set_interior(self, color, perform_update=True):
+		color = self.dim_color(color, self.inside_brightness/255.0)
 		if self._last_interior != color:
 			self._last_interior = color
 			leds = LEDS_INSIDE
@@ -594,26 +690,29 @@ class LEDs():
 		self.fps = fps
 		self.frame_duration = self._get_frame_duration(fps)
 		self.logger.info("set_fps() Changed animation speed: fps:%d (%s s/frame)" % (self.fps, self.frame_duration))
+		return fps
 
 	def spread_spectrum(self, params):
-		self.logger.info("spread_spectrum()")
-		enabled = params.pop(0)
+		enabled = params[0]
 		if enabled == 'off':
-			self._init_strip(LED_FREQ_HZ, False)
-			self.logger.info("spread_spectrum() off, led frequency is: %s", LED_FREQ_HZ)
+			self._init_strip(self.config['led_freq_hz'], False)
+			self.logger.info("spread_spectrum() off, led frequency is: %s", self.config['led_freq_hz'])
+			return enabled
 		elif enabled == 'on' and len(params) in (4,5):
 			try:
-				freq = int(params.pop(0))
-				bandwidth = int(params.pop(0))
-				channel_width = int(params.pop(0))
-				hopping_delay = int(params.pop(0))
-				random = params.pop(0).startswith('r') if len(params) > 0 else False
-				self.logger.info("spread_spectrum() on: freq=%s, bandwidth=%s, channel_width=%s, hopping_delay=%s, random:%s", freq, bandwidth, channel_width, hopping_delay, random)
+				freq = int(params[1])
+				bandwidth = int(params[2])
+				channel_width = int(params[3])
+				hopping_delay = int(params[4])
+				random = params[5].startswith('r') if len(params) > 5 else False
+				status = "freq=%s, bandwidth=%s, channel_width=%s, hopping_delay=%s, random:%s" % (freq, bandwidth, channel_width, hopping_delay, random)
+				self.logger.info("spread_spectrum() on: " + status)
 				self._init_strip(freq, True,
 					spread_spectrum_random=random,
 					spread_spectrum_bandwidth=bandwidth,
 					spread_spectrum_channel_width=channel_width,
 					spread_spectrum_hopping_delay_ms=hopping_delay)
+				return status
 			except:
 				self.logger.exception("spread_spectrum() Exception while executing command %s", self.state)
 		else:
@@ -632,7 +731,7 @@ class LEDs():
 				self.state = self.past_states.pop()
 			else:
 				self.state = COMMANDS['LISTENING'][0]
-			self.logger.warn("Rolleback: fallback to %s", self.state)
+			self.logger.warn("Rollback: fallback to %s", self.state)
 
 	def loop(self):
 		try:
@@ -775,6 +874,9 @@ class LEDs():
 						self.flash(self.frame, color=WHITE, state_length=1)
 
 				# other
+				elif my_state in COMMANDS['PNG_ANIMATION']: # mrbeamledstrips_cli png:test.png
+					filename = params.pop(0)
+					self.png(filename, self.frame, state_length=1)
 				elif my_state in COMMANDS['OFF']:
 					self.off()
 					interior = OFF
@@ -845,12 +947,6 @@ class LEDs():
 						self.logger.exception("Error in focus_tool_state command: {}".format(self.state))
 
 				# stuff
-				elif my_state in COMMANDS['FPS']:
-					self.set_fps(params.pop(0))
-					self.rollback()
-				elif my_state in COMMANDS['SPREAD_SPECTRUM']:
-					self.spread_spectrum(params)
-					self.rollback()
 				elif my_state in COMMANDS['IGNORE_NEXT_COMMAND']:
 					self.ignore_next_command = my_state
 					self.rollback()
@@ -889,25 +985,66 @@ class LEDs():
 
 
 	def set_setting(self, setting, params):
+		self.logger.info('set_setting: setting %s, params %s', setting, params)
 		if setting in SETTINGS['BRIGHTNESS']:
 			return self.set_brightness(params[0])
+		elif setting in SETTINGS['INSIDE_BRIGHTNESS']:
+			return self.set_inside_brightness(params[0])
+		elif setting in SETTINGS['EDGE_BRIGHTNESS']:
+			return self.set_edge_brightness(params[0])
+		elif setting in SETTINGS['FPS']:
+			return self.set_fps(params[0])
+		elif setting in SETTINGS['SPREAD_SPECTRUM']:
+			return self.spread_spectrum(params)
 		else:
 			return None
 
 	def set_brightness(self, bright):
+		br = self._parse8bit(bright)
+		if(br):
+			self.brightness = br
+			return self.brightness
+		else:
+			return None
+	
+	def set_inside_brightness(self, bright):
+		br = self._parse8bit(bright)
+		self.logger.info('set_inside_brightness: %i', br)
+
+		if(br):
+			self.inside_brightness = br
+			self.update_required = True
+			return self.inside_brightness
+		else:
+			return None
+	
+	def set_edge_brightness(self, bright):
+		br = self._parse8bit(bright)
+		if(br):
+			self.edge_brightness = br
+			self.update_required = True
+			return self.edge_brightness
+		else:
+			return None
+
+	def _parse8bit(self, val):
 		try:
-			bright = int(bright)
+			val = int(val)
 		except:
 			return None
-		if bright > 255:
-			bright = 255
-		elif bright < 0:
-			bright = 0
-		self.brightness = bright
-		return self.brightness
+		if val > 255:
+			val = 255
+		elif val < 0:
+			val = 0
+		return val
 
 	def _set_color(self, i, color):
 		c = self.strip.getPixelColor(i)
+		if(i in LEDS_INSIDE):
+			color = self.dim_color(color, self.inside_brightness/255.0)
+			#self.logger.info('change_inside_brightness: %i, %i', i, color)
+		else:
+			color = self.dim_color(color, self.edge_brightness/255.0)
 		if(c != color):
 			self.strip.setPixelColor(i, color)
 			self.update_required = True
