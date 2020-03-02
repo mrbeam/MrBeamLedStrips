@@ -38,6 +38,7 @@ GREEN =  Color(0, 255, 0)
 BLUE =   Color(0, 0, 255)
 YELLOW = Color(255, 200, 0)
 ORANGE = Color(226, 83, 3)
+RED2 =   Color(2, 0, 0)
 
 FOCUS_TOOL_COLORS = {
 	'O': Color(0,64,0), # OK
@@ -223,9 +224,10 @@ class LEDs():
 				return "ERROR {state}   # {old} -> {nu}".format(old=old_state, nu=self.state, state=nu_state)
 
 	def clean_exit(self, signal, msg):
+		self.static_color(RED2)
 		print 'shutting down, signal was: %s' % signal
 		self.logger.info("shutting down, signal was: %s", signal)
-		self.off()
+		#self.off()
 		sys.exit(0)
 
 	def off(self):
@@ -868,7 +870,7 @@ class LEDs():
 
 		except KeyboardInterrupt:
 			self.logger.exception("KeyboardInterrupt Exception in animation loop:")
-			self.clean_exit(signal.SIGTERM, None)
+			self.clean_exit(signal.SIGINT, None)
 		except:
 			self.logger.exception("Some Exception in animation loop:")
 			print("Some Exception in animation loop:")
