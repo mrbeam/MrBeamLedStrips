@@ -10,11 +10,13 @@ the machine state of Mr Beam II over a unix domain socket.
 """
 
 EXTRAS_FOLDERS = [
-    ('/etc/mrbeam_ledstrips.conf.d', 0755)
+    ('/etc/mrbeam_ledstrips.conf.d', 0755),
+    ('/usr/share/mrbeam_ledstrips/png', 0755)
 ]
 
 EXTRAS_FILES = [
     ('/etc/', [('extras/mrbeam_ledstrips.yaml', 'mrbeam_ledstrips.yaml', 0600)]),
+    ('/usr/share/mrbeam_ledstrips/png/', [('extras/png', 0644)]),
     ('/etc/logrotate.d/', [('extras/mrbeam_ledstrips.logrotate', 'mrbeam_ledstrips', 0644)]),
     ('/lib/systemd/system/', [('extras/mrbeam_ledstrips.unit', 'mrbeam_ledstrips.service', 0644)])
 ]
@@ -154,7 +156,7 @@ def get_cmdclass():
 
 def params():
     name = "mrbeam_ledstrips"
-    version = '0.1.18'
+    version = '0.1.19'
     description = DESCRIPTION
     long_description = LONG_DESCRIPTION
     author = "Teja Philipp"

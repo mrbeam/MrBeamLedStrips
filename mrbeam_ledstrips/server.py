@@ -181,7 +181,9 @@ def parse_configfile(configfile):
 	mandatory = ("socket")
 
 	default_config = get_default_config()
+	# TODO: add this to get_default_config and move the function here
 	default_config['socket'] = "/var/run/mrbeam_ledstrips.sock"
+	default_config['png_folder'] = "/usr/share/mrbeam_ledstrips/png"
 
 	try:
 		with open(configfile, "r") as f:
