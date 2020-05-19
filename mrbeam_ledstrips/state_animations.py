@@ -732,6 +732,16 @@ class LEDs():
 			else:
 				self.state = COMMANDS['LISTENING'][0]
 			self.logger.warn("Rollback: fallback to %s", self.state)
+			
+	def rollback_after_frames(self, frame, max_frames=0, steps=1):
+		try:
+			max_frames = int(max_frames)
+		except:
+			pass
+		if max_frames <= 0:
+			return
+		if frame > max_frames:
+			self.rollback(steps=steps)
 
 	def loop(self):
 		try:
@@ -750,7 +760,7 @@ class LEDs():
 
 				# default interior color
 				interior = WHITE
-
+				
 				# Daemon listening
 				if my_state in COMMANDS['LISTENING'] or my_state in COMMANDS['UNKNOWN']:
 					interior = None # skip interior
@@ -884,22 +894,29 @@ class LEDs():
 				# colors
 				elif my_state in COMMANDS['WHITE']:
 					self.static_color(WHITE)
+					self.rollback_after_frames(self.frame, params.pop(0) if len(params)>0 else 0)
 				elif my_state in COMMANDS['RED']:
 					self.static_color(RED)
+					self.rollback_after_frames(self.frame, params.pop(0) if len(params)>0 else 0)
 				elif my_state in COMMANDS['GREEN']:
 					self.static_color(GREEN)
+					self.rollback_after_frames(self.frame, params.pop(0) if len(params)>0 else 0)
 				elif my_state in COMMANDS['BLUE']:
 					self.static_color(BLUE)
+					self.rollback_after_frames(self.frame, params.pop(0) if len(params) > 0 else 0)
 				elif my_state in COMMANDS['YELLOW']:
 					self.static_color(YELLOW)
+					self.rollback_after_frames(self.frame, params.pop(0) if len(params) > 0 else 0)
 				elif my_state in COMMANDS['ORANGE']:
 					self.static_color(ORANGE)
+					self.rollback_after_frames(self.frame, params.pop(0) if len(params) > 0 else 0)
 				elif my_state in COMMANDS['CUSTOM_COLOR']:
 					try:
 						r = int(params.pop(0))
 						g = int(params.pop(0))
 						b = int(params.pop(0))
 						self.static_color(Color(r, g, b))
+						self.rollback_after_frames(self.frame, params.pop(0) if len(params)>0 else 0)
 					except:
 						self.logger.exception("Error in color command: {}".format(self.state))
 						self.set_state_unknown()
@@ -907,21 +924,27 @@ class LEDs():
 				elif my_state in COMMANDS['FLASH_WHITE']:
 					state_length = int(params.pop(0)) if len(params) > 0 else 1
 					self.flash(self.frame, color=WHITE, state_length=state_length)
+					self.rollback_after_frames(self.frame, params.pop(0) if len(params) > 0 else 0)
 				elif my_state in COMMANDS['FLASH_RED']:
 					state_length = int(params.pop(0)) if len(params) > 0 else 1
 					self.flash(self.frame, color=RED, state_length=state_length)
+					self.rollback_after_frames(self.frame, params.pop(0) if len(params) > 0 else 0)
 				elif my_state in COMMANDS['FLASH_GREEN']:
 					state_length = int(params.pop(0)) if len(params) > 0 else 1
 					self.flash(self.frame, color=GREEN, state_length=state_length)
+					self.rollback_after_frames(self.frame, params.pop(0) if len(params) > 0 else 0)
 				elif my_state in COMMANDS['FLASH_BLUE']:
 					state_length = int(params.pop(0)) if len(params) > 0 else 1
 					self.flash(self.frame, color=BLUE, state_length=state_length)
+					self.rollback_after_frames(self.frame, params.pop(0) if len(params) > 0 else 0)
 				elif my_state in COMMANDS['FLASH_YELLOW']:
 					state_length = int(params.pop(0)) if len(params) > 0 else 1
 					self.flash(self.frame, color=YELLOW, state_length=state_length)
+					self.rollback_after_frames(self.frame, params.pop(0) if len(params) > 0 else 0)
 				elif my_state in COMMANDS['FLASH_ORANGE']:
 					state_length = int(params.pop(0)) if len(params) > 0 else 1
 					self.flash(self.frame, color=ORANGE, state_length=state_length)
+					self.rollback_after_frames(self.frame, params.pop(0) if len(params) > 0 else 0)
 				elif my_state in COMMANDS['FLASH_CUSTOM_COLOR']:
 					try:
 						r = int(params.pop(0))
@@ -929,6 +952,7 @@ class LEDs():
 						b = int(params.pop(0))
 						state_length = int(params.pop(0)) if len(params) > 0 else 1
 						self.flash(self.frame, color=Color(r, g, b), state_length=state_length)
+						self.rollback_after_frames(self.frame, params.pop(0) if len(params) > 0 else 0)
 					except:
 						self.logger.exception("Error in flash_color command: {}".format(self.state))
 						self.set_state_unknown()
