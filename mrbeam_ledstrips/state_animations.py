@@ -99,6 +99,8 @@ COMMANDS = dict(
 	LASER_JOB_CANCELLED        = ['LaserJobCancelled'],
 	LASER_JOB_FAILED           = ['LaserJobFailed'],
 	PNG_ANIMATION              = ['png'],
+	
+	LENS_CALIBRATION           = ['lens_calibration'],
 
 	WHITE                      = ['white', 'all_white'],
 	RED                        = ['red', 'all_red'],
@@ -627,10 +629,14 @@ class LEDs():
 			if perform_update:
 				self._update()
 
-	def static_color(self, color=WHITE):
-		leds = LEDS_RIGHT_FRONT + LEDS_LEFT_FRONT + LEDS_RIGHT_BACK + LEDS_LEFT_BACK
-		for i in range(len(leds)):
-			self._set_color(leds[i], color)
+	def static_color(self, color=WHITE, color_inside=None):
+		outside_leds = LEDS_RIGHT_FRONT + LEDS_LEFT_FRONT + LEDS_RIGHT_BACK + LEDS_LEFT_BACK
+		for i in range(len(outside_leds)):
+			self._set_color(outside_leds[i], color)
+		if(color_inside != None):
+			inside_leds = LEDS_INSIDE
+			for i in range(len(inside_leds)):
+				self._set_color(inside_leds[i], color_inside)
 		self._update()
 
 	def focus_tool_idle(self, frame, state_length=2):
@@ -723,10 +729,10 @@ class LEDs():
 		if len(self.past_states) >= steps:
 			for x in range(0, steps):
 				old_state = self.past_states.pop()
-				self.logger.info("Rolleback step %s/%s: rolling back from '%s' to '%s'", x, steps, self.state, old_state)
+				self.logger.info("Rollback step %s/%s: rolling back from '%s' to '%s'", x, steps, self.state, old_state)
 				self.state = old_state
 		else:
-			self.logger.warn("Rolleback: Can't rollback %s steps, max steps: %s", steps, len(self.past_states))
+			self.logger.warn("Rollback: Can't rollback %s steps, max steps: %s", steps, len(self.past_states))
 			if len(self.past_states) >= 1:
 				self.state = self.past_states.pop()
 			else:
@@ -883,6 +889,11 @@ class LEDs():
 					else:
 						self.flash(self.frame, color=WHITE, state_length=1)
 
+				# Lens calibration
+				elif my_state in COMMANDS['LENS_CALIBRATION']:
+					self.set_inside_brightness(2)
+					self.static_color(color=BLUE, color_inside=WHITE)
+					
 				# other
 				elif my_state in COMMANDS['PNG_ANIMATION']: # mrbeamledstrips_cli png:test.png
 					filename = params.pop(0)
@@ -984,6 +995,7 @@ class LEDs():
 					self.logger.info('DebugStop: Woke up!!!. Thread: %s', threading.current_thread())
 					self.rollback()
 				else:
+					self.logger.warn("Don't know about command: {}".format(my_state))
 					self.set_state_unknown()
 					self.idle(self.frame, color=Color(20, 20, 20), state_length=2)
 
@@ -1033,7 +1045,7 @@ class LEDs():
 	
 	def set_inside_brightness(self, bright):
 		br = self._parse8bit(bright)
-		self.logger.info('set_inside_brightness: %i', br)
+		#self.logger.info('set_inside_brightness: %i', br)
 
 		if(br):
 			self.inside_brightness = br

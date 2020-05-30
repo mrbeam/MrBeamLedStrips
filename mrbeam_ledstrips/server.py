@@ -144,13 +144,16 @@ class Server(object):
 
 		info.append("version: {}".format(get_version_string()))
 		info.append(
-			"LEDS: state:{state}, frame:{frame}, fps:{fps}, frame_duration:{frame_duration}, job_progress:{job_progress}, brightness:{brightness}".format(
+			"LEDS: state:{state}, frame:{frame}, fps:{fps}, frame_duration:{frame_duration}, job_progress:{job_progress}, brightness:{brightness}, edge_brightness:{edge_brightness}, inside_brightness:{inside_brightness}".format(
 				state=self.leds.state,
 				frame=self.leds.frame,
 				fps=self.leds.fps,
 				frame_duration=self.leds.frame_duration,
 				job_progress=self.leds.job_progress,
-				brightness=self.leds.brightness))
+				brightness=self.leds.brightness, 
+				edge_brightness=self.leds.edge_brightness, 
+				inside_brightness=self.leds.inside_brightness, 
+				))
 
 		info.append("LEDS config: {}".format(self.leds.config))
 
