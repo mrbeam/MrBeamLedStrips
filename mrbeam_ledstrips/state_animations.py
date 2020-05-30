@@ -891,7 +891,7 @@ class LEDs():
 
 				# Lens calibration
 				elif my_state in COMMANDS['LENS_CALIBRATION']:
-					self.set_inside_brightness(2)
+					self.set_inside_brightness(12)
 					self.static_color(color=BLUE, color_inside=WHITE)
 					
 				# other
