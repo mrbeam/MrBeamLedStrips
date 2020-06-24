@@ -122,7 +122,7 @@ class Server(object):
 			self.leds.clean_exit(signal.SIGTERM, None)
 
 	def start(self):
-		self.logger.info("### Starting up ledstrip server...")
+		self.logger.info("### Starting up ledstrip server v%s...", get_version_string())
 		self.animation = threading.Thread(target=self.leds.loop, kwargs=dict())
 		self.animation.daemon = True
 		self.animation.name = "StateAnimations"

@@ -8,7 +8,6 @@ from __future__ import division
 import signal
 from neopixel import *
 import _rpi_ws281x as ws
-import cv2
 		
 import os
 import time
@@ -283,7 +282,11 @@ class LEDs():
 		state is named "png" with parameter "file.png". => mrbeamledstrips_cli png:breathe.png 
 		files are searched in pre-defined folder (default /usr/share/mrbeamledstrips/png/)
 		"""
-		
+		# as long as cv2 is not absolutely necessary, let's only import it here.
+		# we had cases where leds stopped working because of a broken cv2 lib
+		# A broken cv2 lib should be loggen in OP/mrbPlugin but LEDs should continue to work.
+		import cv2
+
 		# check cache
 		if(self.png_animations.get(filename)):
 			return self.png_animations[filename]
