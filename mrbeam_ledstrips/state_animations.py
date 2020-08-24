@@ -8,7 +8,6 @@ from __future__ import division
 import signal
 from neopixel import *
 import _rpi_ws281x as ws
-import cv2
 		
 import os
 import time
@@ -75,7 +74,6 @@ COMMANDS = dict(
 	SHUTDOWN                   = ['Shutdown'],
 	SHUTDOWN_PREPARE           = ['ShutdownPrepare'],
 	SHUTDOWN_PREPARE_CANCEL    = ['ShutdownPrepareCancel'],
-	UPLOAD                     = ['Upload'],
 	PRINT_STARTED              = ['PrintStarted'],
 	PRINT_DONE                 = ['PrintDone'],
 	PRINT_CANCELLED            = ['PrintCancelled'],
@@ -115,9 +113,17 @@ COMMANDS = dict(
 	FLASH_BLUE                 = ['flash_blue'],
 	FLASH_YELLOW               = ['flash_yellow'],
 	FLASH_ORANGE               = ['flash_orange'],
+	
+	BLINK_WHITE                = ['blink_white'],
+	BLINK_RED                  = ['blink_red'],
+	BLINK_GREEN                = ['blink_green'],
+	BLINK_BLUE                 = ['blink_blue'],
+	BLINK_YELLOW               = ['blink_yellow'],
+	BLINK_ORANGE               = ['blink_orange'],
 
 	CUSTOM_COLOR               = ['color'],
 	FLASH_CUSTOM_COLOR         = ['flash_color'],
+	BLINK_CUSTOM_COLOR         = ['blink_color', 'Upload', 'upload'], # yellow blink was the lonng deprected 'upload'
 	FOCUS_TOOL_STATE           = ['focus_tool_state'],
 	FOCUS_TOOL_IDLE            = ['focus_tool_idle'],
 )
@@ -247,7 +253,10 @@ class LEDs():
 				self.state = nu_state
 				self.frame = 0
 				time.sleep(0.2)
-			if self.state == nu_state or nu_state in COMMANDS['IGNORE_NEXT_COMMAND'] or nu_state in COMMANDS['IGNORE_STOP']:
+			if self.state == nu_state or \
+					nu_state in COMMANDS['ROLLBACK'] or \
+					nu_state in COMMANDS['IGNORE_NEXT_COMMAND'] or \
+					nu_state in COMMANDS['IGNORE_STOP']:
 				return "OK {state}   # {old} -> {nu}".format(old=old_state, nu=nu_state, state=self.state)
 			else:
 				analytics.send_log_event(logging.WARNING, "Unknown state: %s", nu_state)
@@ -276,7 +285,11 @@ class LEDs():
 		state is named "png" with parameter "file.png". => mrbeamledstrips_cli png:breathe.png 
 		files are searched in pre-defined folder (default /usr/share/mrbeamledstrips/png/)
 		"""
-		
+		# as long as cv2 is not absolutely necessary, let's only import it here.
+		# we had cases where leds stopped working because of a broken cv2 lib
+		# A broken cv2 lib should be loggen in OP/mrbPlugin but LEDs should continue to work.
+		import cv2
+
 		# check cache
 		if(self.png_animations.get(filename)):
 			return self.png_animations[filename]
@@ -463,7 +476,7 @@ class LEDs():
 		self._update()
 
 	# alternating upper and lower yellow
-	def upload(self, frame, state_length=8):
+	def blink(self, frame, color=YELLOW, state_length=8):
 		involved_registers = [LEDS_RIGHT_FRONT, LEDS_LEFT_FRONT, LEDS_RIGHT_BACK, LEDS_LEFT_BACK]
 		l = len(LEDS_RIGHT_BACK)
 		fwd_bwd_range = range(l) + range(l-1, -1, -1)
@@ -478,7 +491,7 @@ class LEDs():
 		for r in involved_registers:
 			for i in range(l):
 				if frames[f][i] >= 1:
-					self._set_color(r[i], YELLOW)
+					self._set_color(r[i], color)
 				else:
 					self._set_color(r[i], OFF)
 
@@ -819,10 +832,6 @@ class LEDs():
 				elif my_state in COMMANDS['SHUTDOWN_PREPARE_CANCEL']:
 					self.rollback(2)
 
-				# File Handling
-				elif my_state in COMMANDS['UPLOAD']:
-					self.upload(self.frame)
-
 				# Laser Job
 				elif my_state in COMMANDS['PRINT_STARTED']:
 					self.progress(0, self.frame)
@@ -968,6 +977,46 @@ class LEDs():
 					except:
 						self.logger.exception("Error in flash_color command: {}".format(self.state))
 						self.set_state_unknown()
+						
+
+				elif my_state in COMMANDS['BLINK_WHITE']:
+					state_length = int(params.pop(0)) if len(params) > 0 else 8
+					self.blink(self.frame, color=WHITE, state_length=state_length)
+					self.rollback_after_frames(self.frame, params.pop(0) if len(params) > 0 else 0)
+				elif my_state in COMMANDS['BLINK_RED']:
+					state_length = int(params.pop(0)) if len(params) > 0 else 8
+					self.blink(self.frame, color=RED, state_length=state_length)
+					self.rollback_after_frames(self.frame, params.pop(0) if len(params) > 0 else 0)
+				elif my_state in COMMANDS['BLINK_GREEN']:
+					state_length = int(params.pop(0)) if len(params) > 0 else 8
+					self.blink(self.frame, color=GREEN, state_length=state_length)
+					self.rollback_after_frames(self.frame, params.pop(0) if len(params) > 0 else 0)
+				elif my_state in COMMANDS['BLINK_BLUE']:
+					state_length = int(params.pop(0)) if len(params) > 0 else 8
+					self.blink(self.frame, color=BLUE, state_length=state_length)
+					self.rollback_after_frames(self.frame, params.pop(0) if len(params) > 0 else 0)
+				elif my_state in COMMANDS['BLINK_YELLOW']:
+					state_length = int(params.pop(0)) if len(params) > 0 else 8
+					self.blink(self.frame, color=YELLOW, state_length=state_length)
+					self.rollback_after_frames(self.frame, params.pop(0) if len(params) > 0 else 0)
+				elif my_state in COMMANDS['BLINK_ORANGE']:
+					state_length = int(params.pop(0)) if len(params) > 0 else 8
+					self.blink(self.frame, color=ORANGE, state_length=state_length)
+					self.rollback_after_frames(self.frame, params.pop(0) if len(params) > 0 else 0)
+				elif my_state in COMMANDS['BLINK_CUSTOM_COLOR']:
+					my_color = YELLOW
+					try:
+						r = int(params.pop(0))
+						g = int(params.pop(0))
+						b = int(params.pop(0))
+						my_color = Color(r, g, b)
+					except:
+						pass
+					state_length = int(params.pop(0)) if len(params) > 0 else 8
+					self.blink(self.frame, color=my_color, state_length=state_length)
+					self.rollback_after_frames(self.frame, params.pop(0) if len(params) > 0 else 0)
+					
+						
 				elif my_state in COMMANDS['FOCUS_TOOL_IDLE']:
 					self.focus_tool_idle(self.frame)
 				elif my_state in COMMANDS['FOCUS_TOOL_STATE']:
