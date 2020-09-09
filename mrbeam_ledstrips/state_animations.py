@@ -813,6 +813,7 @@ class LEDs():
 
 				# Server
 				elif my_state in COMMANDS['CLIENT_OPENED']:
+					self.set_inside_brightness(100)
 					self.idle(self.frame)
 				elif my_state in COMMANDS['CLIENT_CLOSED']:
 					self.breathing(self.frame)
@@ -900,7 +901,7 @@ class LEDs():
 
 				# Lens calibration
 				elif my_state in COMMANDS['LENS_CALIBRATION']:
-					self.set_inside_brightness(12)
+					self.set_inside_brightness(90)
 					self.static_color(color=BLUE, color_inside=WHITE)
 					self.rollback_after_frames(self.frame, params.pop(0) if len(params) > 0 else 0)
 					
