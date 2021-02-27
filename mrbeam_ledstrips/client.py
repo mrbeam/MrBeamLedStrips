@@ -9,7 +9,7 @@ import pkg_resources
 def client():
 
 	if len(sys.argv) <= 1:
-		print "MrBeam LED Strips v{}".format(get_version_string())
+		print("MrBeam LED Strips v{}".format(get_version_string()))
 		sys.exit(0)
 
 
@@ -23,15 +23,15 @@ def client():
 	try:
 		s.connect(socket_file)
 	except socket.error as msg:
-		print "socket error: %s " % msg
-		print "Unable to connect to: %s. Daemon running?" % socket_file
+		print("socket error: %s " % msg)
+		print("Unable to connect to: %s. Daemon running?" % socket_file)
 		sys.exit(1)
 
 	try:
 		s.send(state+'\x00')
-		print "> " + state
+		print ("> " + state)
 		data = s.recv(5000)
-		print "< " + data
+		print ("< " + data)
 		s.close()		
 	finally:
 		s.close()

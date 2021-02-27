@@ -10,15 +10,15 @@ the machine state of Mr Beam II over a unix domain socket.
 """
 
 EXTRAS_FOLDERS = [
-	('/etc/mrbeam_ledstrips.conf.d', 0755),
-	('/usr/share/mrbeam_ledstrips/png', 0755)
+	('/etc/mrbeam_ledstrips.conf.d', 0o755),
+	('/usr/share/mrbeam_ledstrips/png', 0o755)
 ]
 
 EXTRAS_FILES = [
-	('/etc/', [('extras/mrbeam_ledstrips.yaml', 'mrbeam_ledstrips.yaml', 0600)]),
-	('/usr/share/mrbeam_ledstrips/png/', [('extras/png', 0644)]),
-	('/etc/logrotate.d/', [('extras/mrbeam_ledstrips.logrotate', 'mrbeam_ledstrips', 0644)]),
-	('/lib/systemd/system/', [('extras/mrbeam_ledstrips.unit', 'mrbeam_ledstrips.service', 0644)])
+	('/etc/', [('extras/mrbeam_ledstrips.yaml', 'mrbeam_ledstrips.yaml', 0o600)]),
+	('/usr/share/mrbeam_ledstrips/png/', [('extras/png', 0o644)]),
+	('/etc/logrotate.d/', [('extras/mrbeam_ledstrips.logrotate', 'mrbeam_ledstrips', 0o644)]),
+	('/lib/systemd/system/', [('extras/mrbeam_ledstrips.unit', 'mrbeam_ledstrips.service', 0o644)])
 ]
 
 
@@ -73,14 +73,14 @@ class InstallExtrasCommand(Command):
 			except Exception as e:
 				import sys
 
-				print("Error while creating %s (%s), aborting" % (folder, e.message))
+				print(("Error while creating %s (%s), aborting" % (folder, e.message)))
 				sys.exit(-1)
 
 		for target, files in EXTRAS_FILES:
 			for entry in files:
 				extra_tuple = get_extra_tuple(entry)
 				if extra_tuple is None:
-					print("Can't parse entry for target %s, skipping it: %r" % (target, entry))
+					print(("Can't parse entry for target %s, skipping it: %r" % (target, entry)))
 					continue
 
 				path, filename, mode = extra_tuple
@@ -88,16 +88,16 @@ class InstallExtrasCommand(Command):
 
 				path_exists = os.path.exists(target_path)
 				if path_exists and not self.force:
-					print("Skipping copying %s to %s as it already exists, use --force to overwrite" % (path, target_path))
+					print(("Skipping copying %s to %s as it already exists, use --force to overwrite" % (path, target_path)))
 					continue
 
 				try:
 					shutil.copy(path, target_path)
 					if mode:
 						os.chmod(target_path, mode)
-						print("Copied %s to %s and changed mode to %o" % (path, target_path, mode))
+						print(("Copied %s to %s and changed mode to %o" % (path, target_path, mode)))
 					else:
-						print("Copied %s to %s" % (path, target_path))
+						print(("Copied %s to %s" % (path, target_path)))
 				except Exception as e:
 					if not path_exists and os.path.exists(target_path):
 						# we'll try to clean up again
@@ -107,7 +107,7 @@ class InstallExtrasCommand(Command):
 							pass
 
 					import sys
-					print("Error while copying %s to %s (%s), aborting" % (path, target_path, e.message))
+					print(("Error while copying %s to %s (%s), aborting" % (path, target_path, e.message)))
 					sys.exit(-1)
 
 
@@ -129,57 +129,46 @@ class UninstallExtrasCommand(Command):
 			for entry in files:
 				extra_tuple = get_extra_tuple(entry)
 				if extra_tuple is None:
-					print("Can't parse entry for target %s, skipping it: %r" % (target, entry))
+					print(("Can't parse entry for target %s, skipping it: %r" % (target, entry)))
 
 				path, filename, mode = extra_tuple
 				target_path = os.path.join(target, filename)
 				try:
 					os.remove(target_path)
-					print("Removed %s" % target_path)
+					print(("Removed %s" % target_path))
 				except Exception as e:
-					print("Error while deleting %s from %s (%s), please remove manually" % (filename, target, e.message))
+					print(("Error while deleting %s from %s (%s), please remove manually" % (filename, target, e.message)))
 
 		for folder, mode in EXTRAS_FOLDERS[::-1]:
 			try:
 				os.rmdir(folder)
 			except Exception as e:
-				print("Error while removing %s (%s), please remove manually" % (folder, e.message))
+				print(("Error while removing %s (%s), please remove manually" % (folder, e.message)))
 
-
-def get_cmdclass():
+setup(
+	name = "mrbeam_ledstrips",
+	version = '0.1.25',
+	description = DESCRIPTION,
+	long_description = LONG_DESCRIPTION,
+	author = "Teja Philipp",
+	author_email = "teja@mr-beam.org",
+	url = "http://github.com/mrbeam/mrbeam_ledstrips",
+	license = "GPLV3",
 	cmdclass = {
 		'install_extras': InstallExtrasCommand,
 		'uninstall_extras': UninstallExtrasCommand
-	}
-	return cmdclass
-
-
-def params():
-	name = "mrbeam_ledstrips"
-	version = '0.1.25'
-	description = DESCRIPTION
-	long_description = LONG_DESCRIPTION
-	author = "Teja Philipp"
-	author_email = "teja@mr-beam.org"
-	url = "http://github.com/mrbeam/mrbeam_ledstrips"
-	license = "GPLV3"
-	cmdclass = get_cmdclass()
-
-	packages = ["mrbeam_ledstrips"]
-	zip_safe = False
-
-	dependency_links = []
+	},
+	packages = ["mrbeam_ledstrips"],
+	zip_safe = False,
+	dependency_links = [],
 	install_requires = [
-		"PyYaml"
-	]
-
+		"PyYaml",
+		"rpi-ws281x; platform_machine=='armv7l'"
+	],
 	entry_points = {
 		"console_scripts": {
 			"mrbeam_ledstrips = mrbeam_ledstrips:server",
 			"mrbeam_ledstrips_cli = mrbeam_ledstrips:client"
 		}
-	}
-
-	return locals()
-
-setup(**params())
+	},
+)

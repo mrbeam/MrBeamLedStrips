@@ -18,9 +18,6 @@ from inspect import getframeinfo, stack
 How to integrate this mrb analytics module:
 
 - adjust constant COMPONENT_NAME in this file
-- add __package_path__ to __builtin__ by copytin this: 
-	import os, __builtin__
-	__builtin__.__package_path__ = os.path.dirname(__file__)
 - in any relevant file:
 - - import analytics file as analytics
 - - Hook into exception method of your logger: analytics.hook_into_logger(self.logger)
@@ -73,7 +70,7 @@ def send_log_event(level, msg, *args, **kwargs):
 		caller = getframeinfo(stack()[i][0])
 		i += 1
 	if caller is not None:
-		filename = caller.filename.replace(__package_path__ + '/', '')
+		filename = caller.filename
 		data.update({
 			'hash': hash('{}{}{}'.format(filename, caller.lineno, _get_version_string())),
 			'file': filename,
@@ -89,9 +86,6 @@ def hook_into_logger(logger):
 	hooks into .exception an .error methods of the given logger.
 	:param logger:
 	"""
-	try: __package_path__
-	except NameError:
-		_logger.error("__package_path__ must be defined in package's __init__.py like this: import os, __builtin__; __builtin__.__package_path__ = os.path.dirname(__file__)")
 	logger.exception = types.MethodType(_exception_overwrite, logger)
 	logger.error = types.MethodType(_error_overwrite, logger)
 
@@ -182,7 +176,6 @@ def _exec_as_user(cmd_list, user_name):
 	stdout, stderr = process.communicate()
 	returncode = process.returncode
 
-	# _logger.debug("exec_as_user() ran as user '%s' (uid:%s, gid:%s) returncode: %s, cmd: %s, cwd: %s, env: %s", user_name, user_uid, user_gid, returncode, cmd_list, cwd, env)
 	if returncode != 0:
 		_logger.warn("exec_as_user() ran as user '%s' (uid:%s, gid:%s) returncode: %s, stdout: %s", user_name, user_uid, user_gid, returncode, stdout)
 

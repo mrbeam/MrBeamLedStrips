@@ -18,7 +18,7 @@ class Daemon:
 
     def __init__(self, pidfile, umask=None):
         self.pidfile = pidfile
-        self.umask = umask if umask else 002
+        self.umask = umask if umask else 0o02
 
     def daemonize(self):
         """Deamonize class. UNIX double fork mechanism."""

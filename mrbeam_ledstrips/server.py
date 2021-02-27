@@ -305,7 +305,7 @@ def server():
 			def run(self):
 				start_server(config)
 
-		daemon = ServerDaemon(pidfile=args.pid, umask=002)
+		daemon = ServerDaemon(pidfile=args.pid, umask=0o02)
 		name = "Server"
 		daemon.start()
 

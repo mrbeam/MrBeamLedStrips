@@ -6,8 +6,8 @@
 from __future__ import division
 
 import signal
-from neopixel import *
-import _rpi_ws281x as ws
+import rpi_ws281x as ws
+from rpi_ws281x import Color
 		
 import os
 import time
@@ -204,7 +204,7 @@ class LEDs():
 					spread_spectrum_bandwidth=None,
 					spread_spectrum_channel_width=None,
 					spread_spectrum_hopping_delay_ms=None):
-		self.strip = Adafruit_NeoPixel(self.config['led_count'],
+		self.strip = ws.PixelStrip(self.config['led_count'],
 									   self.config['gpio_pin'],
 									   freq_hz=freq_hz,
 									   dma=self.config['led_dma'],
@@ -264,7 +264,6 @@ class LEDs():
 
 	def clean_exit(self, signal, msg):
 		self.static_color(RED2)
-		print 'shutting down, signal was: %s' % signal
 		self.logger.info("shutting down, signal was: %s", signal)
 		#self.off()
 		sys.exit(0)
