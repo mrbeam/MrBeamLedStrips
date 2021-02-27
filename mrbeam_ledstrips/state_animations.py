@@ -15,7 +15,6 @@ import sys
 import threading
 import logging
 
-import mrbeam_ledstrips.analytics as analytics
 
 # LED strip configuration:
 # Serial numbering of LEDs on the Mr Beam modules
@@ -171,7 +170,10 @@ class LEDs():
 	def __init__(self, config):
 		self.config = config
 		self.logger = logging.getLogger(__name__)
-		analytics.hook_into_logger(self.logger)
+		self.analytics = self.config.get('enable_analytics', False)
+		if self.analytics:
+			from . import analytics
+			analytics.hook_into_logger(self.logger)
 
 		print("LEDs staring up with config: %s" % self.config)
 		self.logger.info("LEDs staring up with config: %s", self.config)
@@ -259,7 +261,8 @@ class LEDs():
 					nu_state in COMMANDS['IGNORE_STOP']:
 				return "OK {state}   # {old} -> {nu}".format(old=old_state, nu=nu_state, state=self.state)
 			else:
-				analytics.send_log_event(logging.WARNING, "Unknown state: %s", nu_state)
+				if self.analytics:
+					analytics.send_log_event(logging.WARNING, "Unknown state: %s", nu_state)
 				return "ERROR {state}   # {old} -> {nu}".format(old=old_state, nu=self.state, state=nu_state)
 
 	def clean_exit(self, signal, msg):

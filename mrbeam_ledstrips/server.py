@@ -12,13 +12,15 @@ import yaml
 import os
 import pkg_resources
 from .state_animations import LEDs, COMMANDS, get_default_config
-import mrbeam_ledstrips.analytics as analytics
 
 
 class Server(object):
 	def __init__(self, server_address, led_config):
 		self.logger = logging.getLogger(__name__)
-		analytics.hook_into_logger(self.logger)
+		self.analytics = led_config.get('enable_analytics', False)
+		if self.analytics:
+			from . import analytics
+			analytics.hook_into_logger(self.logger)
 
 		def exception_logger(exc_type, exc_value, exc_tb):
 			self.logger.error("Uncaught exception", exc_info=(exc_type, exc_value, exc_tb))
