@@ -147,7 +147,7 @@ class UninstallExtrasCommand(Command):
 
 setup(
 	name = "mrbeam_ledstrips",
-	version = '0.1.26',
+	version = '0.2.0',
 	description = DESCRIPTION,
 	long_description = LONG_DESCRIPTION,
 	author = "Teja Philipp",
