@@ -3,7 +3,7 @@
 # Author: Teja Philipp (teja@mr-beam.org)
 # using https://github.com/jgarff/rpi_ws281x
 
-from __future__ import division
+from __future__ import division, absolute_import
 
 import signal
 import rpi_ws281x as ws
