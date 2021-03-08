@@ -292,7 +292,7 @@ def server():
 		console_handler.level = logging.DEBUG if args.debug else logging.INFO
 		logging.getLogger('').addHandler(console_handler)
 
-	config = parse_configfile(args.config)
+	config = get_config(args.config)
 
 	if args.foreground:
 		# start directly instead of as daemon
