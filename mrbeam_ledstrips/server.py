@@ -13,6 +13,61 @@ import os
 import pkg_resources
 from .state_animations import LEDs, COMMANDS, get_default_config
 
+def merge_config(default, config):
+    # See octoprint.util.dict_merge
+    result = dict()
+    for k, v in default.items():
+        result[k] = v
+        if isinstance(v, dict):
+            result[k] = merge_config(v, config[k] if k in config else dict())
+        else:
+            if k in config:
+                result[k] = config[k]
+
+    return result
+
+
+def get_config(path):
+
+    default_config = dict(
+        socket='/var/run/mrbeam_ledstrips.sock',
+        led_count = 46,          # Number of LED pixels.
+        gpio_pin = 18,           # SPI:10, PWM: 18
+        led_freq_hz = 800000,    # LED signal frequency in Hz (usually 800kHz)
+        # led_freq_hz = 1200000, # for spreading on SPI pin....
+        led_dma = 10,            # DMA channel to use for generating signal. This produced a problem after changing to a
+        				# newer kernerl version (https://github.com/jgarff/rpi_ws281x/issues/208). Changing it from
+        				# the previous 5 to channel 10 solved it.
+        led_brigthness = 255,    # 0..255 / Dim if too much power is used.
+        led_invert = False,      # True to invert the signal (when using NPN transistor level shift)
+
+        # spread spectrum settings (only effective if gpio_pin is set to 10 (SPI))
+        spread_spectrum_enabled          = True,
+        spread_spectrum_random           = True,
+        spread_spectrum_bandwidth        = 200000,
+        spread_spectrum_channel_width    = 9000,
+        spread_spectrum_hopping_delay_ms = 50,
+
+        # default frames per second
+        frames_per_second = 28,
+
+        # max png file size 30 kB
+        max_png_size = 30 * 1024
+    )
+
+    import os
+    if os.path.exists(path):
+        try:
+            with open(path, "r") as f:
+                file_config = yaml.safe_load(f)
+        except:
+            logging.get_logger(__name__).warning("error loading config file")
+            return default_config
+        else:
+            return merge_config(default_config, file_config)
+    else:
+            return default_config
+
 
 class Server(object):
 	def __init__(self, server_address, led_config):
@@ -179,42 +234,6 @@ def get_version_string():
 		return '-'
 
 
-def parse_configfile(configfile):
-	if not os.path.exists(configfile):
-		return None
-
-	mandatory = ("socket")
-
-	default_config = get_default_config()
-	# TODO: add this to get_default_config and move the function here
-	default_config['socket'] = "/var/run/mrbeam_ledstrips.sock"
-	default_config['png_folder'] = "/usr/share/mrbeam_ledstrips/png"
-
-	try:
-		with open(configfile, "r") as f:
-			config = yaml.safe_load(f)
-	except:
-		raise InvalidConfig("error loading config file")
-
-	def merge_config(default, config, mandatory, prefix=None):
-		result = dict()
-		for k, v in default.items():
-			result[k] = v
-
-			prefixed_key = "%s.%s" % (prefix, k) if prefix else k
-			if isinstance(v, dict):
-				result[k] = merge_config(v, config[k] if k in config else dict(), mandatory, prefixed_key)
-			else:
-				if k in config:
-					result[k] = config[k]
-
-			if result[k] is None and prefixed_key in mandatory:
-				raise InvalidConfig("mandatory key %s is missing" % k)
-		return result
-
-	return merge_config(default_config, config, mandatory)
-
-
 def start_server(config):
 	s = Server(config["socket"], config)
 	s.start()
@@ -275,25 +294,7 @@ def server():
 		console_handler.level = logging.DEBUG if args.debug else logging.INFO
 		logging.getLogger('').addHandler(console_handler)
 
-	default_config = dict(socket='/var/run/mrbeam_ledstrips.sock')
-	import copy
-	config = copy.deepcopy(default_config)
-
-	configfile = args.config
-	if not configfile:
-		configfile = "/etc/mrbeam_ledstrips.yaml"
-
-	import os
-	if os.path.exists(configfile):
-		try:
-			config = parse_configfile(configfile)
-		except InvalidConfig as e:
-			parser.error("Invalid configuration file: " + e.message)
-
-	# validate command line
-	if not config["socket"]:
-		parser.info("Using Socket default address, overwrite with config file")
-	# config["socket"] = ""
+	config = parse_configfile(args.config)
 
 	if args.foreground:
 		# start directly instead of as daemon
