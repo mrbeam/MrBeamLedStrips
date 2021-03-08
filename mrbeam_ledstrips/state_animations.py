@@ -136,33 +136,6 @@ SETTINGS = dict(
 	EDGE_BRIGHTNESS                 = ['edge_brightness', 'eb'],
 )
 
-def get_default_config():
-	# config file overrides these....
-	return dict(
-		led_count = 46,          # Number of LED pixels.
-		gpio_pin = 18,           # SPI:10, PWM: 18
-		led_freq_hz = 800000,    # LED signal frequency in Hz (usually 800kHz)
-		# led_freq_hz = 1200000, # for spreading on SPI pin....
-		led_dma = 10,            # DMA channel to use for generating signal. This produced a problem after changing to a
-								 # newer kernerl version (https://github.com/jgarff/rpi_ws281x/issues/208). Changing it from
-								 # the previous 5 to channel 10 solved it.
-		led_brigthness = 255,    # 0..255 / Dim if too much power is used.
-		led_invert = False,      # True to invert the signal (when using NPN transistor level shift)
-
-		# spread spectrum settings (only effective if gpio_pin is set to 10 (SPI))
-		spread_spectrum_enabled          = True,
-		spread_spectrum_random           = True,
-		spread_spectrum_bandwidth        = 200000,
-		spread_spectrum_channel_width    = 9000,
-		spread_spectrum_hopping_delay_ms = 50,
-
-		# default frames per second
-		frames_per_second 				 = 28,
-		
-		# max png file size 30 kB
-		max_png_size = 30 * 1024
-	)
-
 
 class LEDs():
 
