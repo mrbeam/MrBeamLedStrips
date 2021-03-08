@@ -11,7 +11,7 @@ import traceback
 import yaml
 import os
 import pkg_resources
-from .state_animations import LEDs, COMMANDS, get_default_config
+from .state_animations import LEDs, COMMANDS
 import mrbeam_ledstrips.analytics as analytics
 
 def merge_config(default, config):
