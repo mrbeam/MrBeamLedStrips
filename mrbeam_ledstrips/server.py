@@ -11,7 +11,7 @@ import traceback
 import yaml
 import os
 import pkg_resources
-from .state_animations import LEDs, COMMANDS, get_default_config
+from .state_animations import LEDs, COMMANDS
 
 def merge_config(default, config):
     # See octoprint.util.dict_merge
@@ -294,7 +294,7 @@ def server():
 		console_handler.level = logging.DEBUG if args.debug else logging.INFO
 		logging.getLogger('').addHandler(console_handler)
 
-	config = parse_configfile(args.config)
+	config = get_config(args.config)
 
 	if args.foreground:
 		# start directly instead of as daemon
