@@ -5,6 +5,7 @@ import socket
 import sys
 import pkg_resources
 
+CLIENT_TIMEOUT = 5 # in seconds
 
 def client():
 
@@ -16,10 +17,8 @@ def client():
 	state = sys.argv[1]
 
 	socket_file = "/var/run/mrbeam_ledstrips.sock"
-	s = None  # socket object
-
 	s = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
-	s.settimeout(2)
+	s.settimeout(CLIENT_TIMEOUT)
 	try:
 		s.connect(socket_file)
 	except socket.error as msg:
@@ -28,11 +27,12 @@ def client():
 		sys.exit(1)
 
 	try:
-		s.send(state+'\x00')
+		# s.sendall(b'info')
+		s.sendall(bytes(state, "utf8"))
+		s.sendall(b'')
 		print ("> " + state)
-		data = s.recv(5000)
-		print ("< " + data)
-		s.close()		
+		data = s.recv(4*1024)
+		print ("< " + str(data, "utf8"))
 	finally:
 		s.close()
 

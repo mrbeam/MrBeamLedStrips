@@ -13,6 +13,8 @@ import os
 import pkg_resources
 from .state_animations import LEDs, COMMANDS
 
+SOCK_BUF_SIZE = 4 * 1024
+
 def merge_config(default, config):
     # See octoprint.util.dict_merge
     result = dict()
@@ -137,41 +139,25 @@ class Server(object):
 
 				# with self.mutex:
 				try:
-					buffer = []
-					while True:
-						chunk = connection.recv(16)
-						if chunk:
-							# self.logger.info('Recv: %r' % chunk)
-							buffer.append(chunk)
-							if chunk.endswith('\x00') or chunk.endswith("\n"):
-								break
+					with connection:
+						data = str(connection.recv(SOCK_BUF_SIZE), "utf8").strip()
 
-					data = ''.join(buffer).strip()[:-1]
+						self.logger.info('Command: %s' % data)
+						response = str(callback(data))
 
-					ret = False
-					result = 'unknown event'
+						self.logger.info('Send: %s' % response)
+						connection.sendall(bytes(response, "utf8"))
 
-					self.logger.info('Command: %s' % data)
-					response = callback(data)
-
-					self.logger.info('Send: %s' % str(response))
-					connection.sendall(str(response) + '\x00')
-
-				except:
+				except Exception:
 					self.logger.exception('Got an error while processing message from client, aborting')
 
 					try:
 						connection.sendall(str(ErrorResponse("error while processing message from client")) + '\x00')
 					except:
 						pass
-		except KeyboardInterrupt:
+		except (KeyboardInterrupt, SystemExit):
 			pass
-			# sock.close()
-			# os.unlink(server_address)
-			# self.leds.clean_exit(signal.SIGTERM, None)
-		except SystemExit:
-			pass
-		except:
+		except Exception:
 			self.logger.exception("Exception in socket monitor: ")
 		finally:
 			sock.close()
