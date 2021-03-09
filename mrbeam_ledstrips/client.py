@@ -29,7 +29,6 @@ def client():
 	try:
 		# s.sendall(b'info')
 		s.sendall(bytes(state, "utf8"))
-		s.sendall(b'')
 		print ("> " + state)
 		data = s.recv(4*1024)
 		print ("< " + str(data, "utf8"))
