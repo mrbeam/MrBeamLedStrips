@@ -163,7 +163,7 @@ setup(
 	dependency_links = [],
 	install_requires = [
 		"PyYaml",
-		"rpi-ws281x; platform_machine=='armv7l'"
+		"rpi-ws281x; platform_machine=='armv7l'",
 	],
 	entry_points = {
 		"console_scripts": {

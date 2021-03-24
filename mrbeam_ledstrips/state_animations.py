@@ -148,7 +148,7 @@ class LEDs():
 			from . import analytics
 			analytics.hook_into_logger(self.logger)
 
-		print("LEDs staring up with config: %s" % self.config)
+		print(("LEDs staring up with config: %s" % self.config))
 		self.logger.info("LEDs staring up with config: %s", self.config)
 
 		# Create NeoPixel object with appropriate configuration.
@@ -203,7 +203,7 @@ class LEDs():
 		with self.lock:
 			if self.ignore_next_command:
 				self.ignore_next_command = None
-				print("state change ignored! keeping: " + str(self.state) + ", ignored: " + str(nu_state))
+				print(("state change ignored! keeping: " + str(self.state) + ", ignored: " + str(nu_state)))
 				return "IGNORED {state}   # {old} -> {nu}".format(old=self.state, nu=self.state, state=nu_state)
 
 			# Settings
@@ -219,7 +219,7 @@ class LEDs():
 
 			old_state = self.state
 			if self.state != nu_state:
-				print("state change " + str(self.state) + " => " + str(nu_state))
+				print(("state change " + str(self.state) + " => " + str(nu_state)))
 				self.logger.info("state change " + str(self.state) + " => " + str(nu_state))
 				if self.state != nu_state:
 					self.past_states.append(self.state)
@@ -350,7 +350,7 @@ class LEDs():
 	@staticmethod
 	def _mylinspace(start, stop, count):
 		step = (stop - start) / float(count)
-		return [start + i * step for i in xrange(count)]
+		return [start + i * step for i in range(count)]
 
 	# pulsing red from the center
 	def error(self, frame):
@@ -390,7 +390,7 @@ class LEDs():
 		dim = 1 - (abs((frame/state_length % f_count*2) - (f_count-1))/f_count)
 
 		my_color = color
-		if isinstance(color, (list,)):
+		if isinstance(color, list):
 			color_index = int(frame / f_count / 2) % len(color)
 			my_color = color[color_index]
 		dim_color = self.dim_color(my_color, dim)
@@ -454,7 +454,7 @@ class LEDs():
 	def blink(self, frame, color=YELLOW, state_length=8):
 		involved_registers = [LEDS_RIGHT_FRONT, LEDS_LEFT_FRONT, LEDS_RIGHT_BACK, LEDS_LEFT_BACK]
 		l = len(LEDS_RIGHT_BACK)
-		fwd_bwd_range = range(l) + range(l-1, -1, -1)
+		fwd_bwd_range = list(range(l)) + list(range(l-1, -1, -1))
 
 		frames = [
 			[1, 1, 1, 0, 0, 0, 0],
