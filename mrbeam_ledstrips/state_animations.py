@@ -143,7 +143,7 @@ class LEDs():
 	def __init__(self, config):
 		self.config = config
 		self.logger = logging.getLogger(__name__)
-		self.analytics = self.config.get('enable_analytics', False)
+		self.analytics = self.config.get('enable_analytics', True)
 		if self.analytics:
 			from . import analytics
 			analytics.hook_into_logger(self.logger)

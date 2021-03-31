@@ -74,7 +74,7 @@ def get_config(path):
 class Server(object):
 	def __init__(self, server_address, led_config):
 		self.logger = logging.getLogger(__name__)
-		self.analytics = led_config.get('enable_analytics', False)
+		self.analytics = led_config.get('enable_analytics', True)
 		if self.analytics:
 			from . import analytics
 			analytics.hook_into_logger(self.logger)
