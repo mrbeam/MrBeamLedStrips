@@ -6,14 +6,22 @@
 from __future__ import division, absolute_import
 
 import signal
-import rpi_ws281x as ws
-from rpi_ws281x import Color
-		
+
 import os
 import time
 import sys
 import threading
 import logging
+
+PY3 = sys.version_info >= (3,0)
+if PY3:
+	import rpi_ws281x as ws
+	from rpi_ws281x import Color
+	PixelStrip = ws.PixelStrip
+else:
+	import _rpi_ws281x as ws
+	from neopixel import Color, Adafruit_NeoPixel
+	PixelStrip = Adafruit_NeoPixel
 
 
 # LED strip configuration:
@@ -131,8 +139,8 @@ SETTINGS = dict(
 	FPS                        = ['fps'],
 	SPREAD_SPECTRUM            = ['spread_spectrum'],
 	BRIGHTNESS                 = ['brightness', 'bright', 'b'],
-	INSIDE_BRIGHTNESS                 = ['inside_brightness', 'ib'],
-	EDGE_BRIGHTNESS                 = ['edge_brightness', 'eb'],
+	INSIDE_BRIGHTNESS          = ['inside_brightness', 'ib'],
+	EDGE_BRIGHTNESS            = ['edge_brightness', 'eb'],
 )
 
 
@@ -179,7 +187,7 @@ class LEDs():
 					spread_spectrum_bandwidth=None,
 					spread_spectrum_channel_width=None,
 					spread_spectrum_hopping_delay_ms=None):
-		self.strip = ws.PixelStrip(self.config['led_count'],
+		self.strip = PixelStrip(self.config['led_count'],
 									   self.config['gpio_pin'],
 									   freq_hz=freq_hz,
 									   dma=self.config['led_dma'],
