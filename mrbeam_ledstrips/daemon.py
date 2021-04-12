@@ -18,7 +18,7 @@ class Daemon:
 
     def __init__(self, pidfile, umask=None):
         self.pidfile = pidfile
-        self.umask = umask if umask else 002
+        self.umask = umask if umask else 0o02
 
     def daemonize(self):
         """Deamonize class. UNIX double fork mechanism."""
@@ -116,7 +116,7 @@ class Daemon:
                 if os.path.exists(self.pidfile):
                     os.remove(self.pidfile)
             else:
-                print (str(err.args))
+                print((str(err.args)))
                 sys.exit(1)
 
     def restart(self):
