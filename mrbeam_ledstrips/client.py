@@ -27,7 +27,6 @@ def client():
 		sys.exit(1)
 
 	try:
-		# s.sendall(b'info')
 		s.sendall(bytes(state, "utf8"))
 		print(("> " + state))
 		data = s.recv(4*1024)
