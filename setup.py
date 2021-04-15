@@ -2,6 +2,7 @@
 #!/usr/bin/env python
 
 from setuptools import setup, Command
+import sys
 
 
 DESCRIPTION = "A daemon for controlling the LEDs of Mr Beam II"
@@ -71,8 +72,6 @@ class InstallExtrasCommand(Command):
 				else:
 					os.mkdir(folder, mode)
 			except Exception as e:
-				import sys
-
 				print(("Error while creating %s (%s), aborting" % (folder, e.message)))
 				sys.exit(-1)
 
@@ -106,7 +105,6 @@ class InstallExtrasCommand(Command):
 						except:
 							pass
 
-					import sys
 					print(("Error while copying %s to %s (%s), aborting" % (path, target_path, e.message)))
 					sys.exit(-1)
 
