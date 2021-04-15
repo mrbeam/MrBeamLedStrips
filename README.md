@@ -1,6 +1,6 @@
 # MrBeamLedStrips
 
-MrBeamLedStrips is a standalone compontent that handles Mr Beam II's LED strips.
+MrBeamLedStrips is a standalone component that handles Mr Beam II's LED strips.
 
 ## Usage
 #### Socket Connection
