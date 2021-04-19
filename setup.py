@@ -149,7 +149,7 @@ if sys.version_info >= (3,0):
 	install_requires += ["rpi-ws281x; platform_machine=='armv7l'",]
 setup(
 	name = "mrbeam_ledstrips",
-	version = '0.2.0',
+	version = '0.2.1',
 	description = DESCRIPTION,
 	long_description = LONG_DESCRIPTION,
 	author = "Teja Philipp",
