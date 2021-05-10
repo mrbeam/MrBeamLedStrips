@@ -1,5 +1,5 @@
 # coding=utf-8
-
+from __future__ import absolute_import
 
 import threading
 import time
@@ -58,7 +58,7 @@ def send_log_event(level, msg, *args, **kwargs):
 		stacktrace = traceback.format_tb(tb)
 
 	data=dict(
-		level = logging._levelNames[level] if level in logging._levelNames else level,
+		level = logging.getLevelName(level),
 		msg = msg,
 		exception_str=exception_str,
 		stacktrace=stacktrace,
