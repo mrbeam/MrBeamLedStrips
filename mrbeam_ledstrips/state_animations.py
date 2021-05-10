@@ -243,6 +243,7 @@ class LEDs():
 				return "OK {state}   # {old} -> {nu}".format(old=old_state, nu=nu_state, state=self.state)
 			else:
 				if self.analytics:
+					from . import analytics
 					analytics.send_log_event(logging.WARNING, "Unknown state: %s", nu_state)
 				return "ERROR {state}   # {old} -> {nu}".format(old=old_state, nu=self.state, state=nu_state)
 
