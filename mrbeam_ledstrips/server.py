@@ -169,7 +169,7 @@ class Server(object):
 					self.logger.exception('Got an error while processing message from client, aborting')
 
 					try:
-						connection.sendall(str(ErrorResponse("error while processing message from client")) + '\x00')
+						connection.sendall(str("ERROR : error while processing message from client") + '\x00')
 					except:
 						pass
 		except (KeyboardInterrupt, SystemExit):
