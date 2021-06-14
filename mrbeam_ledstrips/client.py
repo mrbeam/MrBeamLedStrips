@@ -5,34 +5,40 @@ import socket
 import sys
 import pkg_resources
 
+PY3 = sys.version_info >= (3,0)
+CLIENT_TIMEOUT = 5 # in seconds
 
 def client():
 
 	if len(sys.argv) <= 1:
-		print "MrBeam LED Strips v{}".format(get_version_string())
+		print(("MrBeam LED Strips v{}".format(get_version_string())))
 		sys.exit(0)
 
 
 	state = sys.argv[1]
 
 	socket_file = "/var/run/mrbeam_ledstrips.sock"
-	s = None  # socket object
-
 	s = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
-	s.settimeout(2)
+	s.settimeout(CLIENT_TIMEOUT)
 	try:
 		s.connect(socket_file)
 	except socket.error as msg:
-		print "socket error: %s " % msg
-		print "Unable to connect to: %s. Daemon running?" % socket_file
+		print(("socket error: %s " % msg))
+		print(("Unable to connect to: %s. Daemon running?" % socket_file))
 		sys.exit(1)
 
 	try:
-		s.send(state+'\x00')
-		print "> " + state
-		data = s.recv(5000)
-		print "< " + data
-		s.close()		
+		print(("> " + state))
+		if PY3:
+			s.sendall(bytes(state, "utf8"))
+		else:
+			s.send(state+'\x00')
+		data = s.recv(4*1024)
+		if PY3:
+			print(("< " + str(data, "utf8")))
+		else:
+			print(("< " + data))
+
 	finally:
 		s.close()
 

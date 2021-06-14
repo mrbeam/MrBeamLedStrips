@@ -3,19 +3,26 @@
 # Author: Teja Philipp (teja@mr-beam.org)
 # using https://github.com/jgarff/rpi_ws281x
 
-from __future__ import division
+from __future__ import division, absolute_import
 
 import signal
-from neopixel import *
-import _rpi_ws281x as ws
-		
+
 import os
 import time
 import sys
 import threading
 import logging
 
-import mrbeam_ledstrips.analytics as analytics
+PY3 = sys.version_info >= (3,0)
+if PY3:
+	import rpi_ws281x as ws
+	from rpi_ws281x import Color
+	PixelStrip = ws.PixelStrip
+else:
+	import _rpi_ws281x as ws
+	from neopixel import Color, Adafruit_NeoPixel
+	PixelStrip = Adafruit_NeoPixel
+
 
 # LED strip configuration:
 # Serial numbering of LEDs on the Mr Beam modules
@@ -132,36 +139,9 @@ SETTINGS = dict(
 	FPS                        = ['fps'],
 	SPREAD_SPECTRUM            = ['spread_spectrum'],
 	BRIGHTNESS                 = ['brightness', 'bright', 'b'],
-	INSIDE_BRIGHTNESS                 = ['inside_brightness', 'ib'],
-	EDGE_BRIGHTNESS                 = ['edge_brightness', 'eb'],
+	INSIDE_BRIGHTNESS          = ['inside_brightness', 'ib'],
+	EDGE_BRIGHTNESS            = ['edge_brightness', 'eb'],
 )
-
-def get_default_config():
-	# config file overrides these....
-	return dict(
-		led_count = 46,          # Number of LED pixels.
-		gpio_pin = 18,           # SPI:10, PWM: 18
-		led_freq_hz = 800000,    # LED signal frequency in Hz (usually 800kHz)
-		# led_freq_hz = 1200000, # for spreading on SPI pin....
-		led_dma = 10,            # DMA channel to use for generating signal. This produced a problem after changing to a
-								 # newer kernerl version (https://github.com/jgarff/rpi_ws281x/issues/208). Changing it from
-								 # the previous 5 to channel 10 solved it.
-		led_brigthness = 255,    # 0..255 / Dim if too much power is used.
-		led_invert = False,      # True to invert the signal (when using NPN transistor level shift)
-
-		# spread spectrum settings (only effective if gpio_pin is set to 10 (SPI))
-		spread_spectrum_enabled          = True,
-		spread_spectrum_random           = True,
-		spread_spectrum_bandwidth        = 200000,
-		spread_spectrum_channel_width    = 9000,
-		spread_spectrum_hopping_delay_ms = 50,
-
-		# default frames per second
-		frames_per_second 				 = 28,
-		
-		# max png file size 30 kB
-		max_png_size = 30 * 1024
-	)
 
 
 class LEDs():
@@ -171,9 +151,12 @@ class LEDs():
 	def __init__(self, config):
 		self.config = config
 		self.logger = logging.getLogger(__name__)
-		analytics.hook_into_logger(self.logger)
+		self.analytics = self.config.get('enable_analytics', True)
+		if self.analytics:
+			from . import analytics
+			analytics.hook_into_logger(self.logger)
 
-		print("LEDs staring up with config: %s" % self.config)
+		print(("LEDs staring up with config: %s" % self.config))
 		self.logger.info("LEDs staring up with config: %s", self.config)
 
 		# Create NeoPixel object with appropriate configuration.
@@ -204,7 +187,7 @@ class LEDs():
 					spread_spectrum_bandwidth=None,
 					spread_spectrum_channel_width=None,
 					spread_spectrum_hopping_delay_ms=None):
-		self.strip = Adafruit_NeoPixel(self.config['led_count'],
+		self.strip = PixelStrip(self.config['led_count'],
 									   self.config['gpio_pin'],
 									   freq_hz=freq_hz,
 									   dma=self.config['led_dma'],
@@ -228,7 +211,7 @@ class LEDs():
 		with self.lock:
 			if self.ignore_next_command:
 				self.ignore_next_command = None
-				print("state change ignored! keeping: " + str(self.state) + ", ignored: " + str(nu_state))
+				print(("state change ignored! keeping: " + str(self.state) + ", ignored: " + str(nu_state)))
 				return "IGNORED {state}   # {old} -> {nu}".format(old=self.state, nu=self.state, state=nu_state)
 
 			# Settings
@@ -244,7 +227,7 @@ class LEDs():
 
 			old_state = self.state
 			if self.state != nu_state:
-				print("state change " + str(self.state) + " => " + str(nu_state))
+				print(("state change " + str(self.state) + " => " + str(nu_state)))
 				self.logger.info("state change " + str(self.state) + " => " + str(nu_state))
 				if self.state != nu_state:
 					self.past_states.append(self.state)
@@ -259,12 +242,12 @@ class LEDs():
 					nu_state in COMMANDS['IGNORE_STOP']:
 				return "OK {state}   # {old} -> {nu}".format(old=old_state, nu=nu_state, state=self.state)
 			else:
-				analytics.send_log_event(logging.WARNING, "Unknown state: %s", nu_state)
+				if self.analytics:
+					analytics.send_log_event(logging.WARNING, "Unknown state: %s", nu_state)
 				return "ERROR {state}   # {old} -> {nu}".format(old=old_state, nu=self.state, state=nu_state)
 
 	def clean_exit(self, signal, msg):
 		self.static_color(RED2)
-		print 'shutting down, signal was: %s' % signal
 		self.logger.info("shutting down, signal was: %s", signal)
 		#self.off()
 		sys.exit(0)
@@ -375,7 +358,7 @@ class LEDs():
 	@staticmethod
 	def _mylinspace(start, stop, count):
 		step = (stop - start) / float(count)
-		return [start + i * step for i in xrange(count)]
+		return [start + i * step for i in range(count)]
 
 	# pulsing red from the center
 	def error(self, frame):
@@ -415,7 +398,7 @@ class LEDs():
 		dim = 1 - (abs((frame/state_length % f_count*2) - (f_count-1))/f_count)
 
 		my_color = color
-		if isinstance(color, (list,)):
+		if isinstance(color, list):
 			color_index = int(frame / f_count / 2) % len(color)
 			my_color = color[color_index]
 		dim_color = self.dim_color(my_color, dim)
@@ -479,7 +462,7 @@ class LEDs():
 	def blink(self, frame, color=YELLOW, state_length=8):
 		involved_registers = [LEDS_RIGHT_FRONT, LEDS_LEFT_FRONT, LEDS_RIGHT_BACK, LEDS_LEFT_BACK]
 		l = len(LEDS_RIGHT_BACK)
-		fwd_bwd_range = range(l) + range(l-1, -1, -1)
+		fwd_bwd_range = list(range(l)) + list(range(l-1, -1, -1))
 
 		frames = [
 			[1, 1, 1, 0, 0, 0, 0],
