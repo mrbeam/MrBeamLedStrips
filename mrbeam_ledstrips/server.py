@@ -74,6 +74,16 @@ def get_config(path):
 
 
 class Server(object):
+	"""A server which listens for commands over a socket and changes LED animations accordingly.
+
+	- runs a ``Thread`` which takes care of the LED animations (``LEDs.loop()``)
+	- The main thread monitors messages sent over a socket connection.
+		- Sends relevant commnads through a callback to the ``LEDs`` instance
+
+	TODO Create an API for the ``LEDs`` instance. All the message parsing can be done in this class,
+	     then perform the correct calls accordingly.
+	"""
+
 	def __init__(self, server_address, led_config):
 		self.logger = logging.getLogger(__name__)
 		self.analytics = led_config.get('enable_analytics', True)
@@ -190,6 +200,7 @@ class Server(object):
 		self._socket_monitor(self.server_address, callback=self.parse_socket_msg)
 
 	def parse_socket_msg(self, command):
+		"""Parse the message from the socket and run the appropriate API calls."""
 		response = "ERRROR"
 		if command in ('info', '?'):
 			info = self.get_info()
@@ -208,6 +219,7 @@ class Server(object):
 			return self.leds.change_state(command)
 
 	def get_info(self):
+		"""Returns basic insight into the attributes of the ``LEDs`` instance for debugging reasons."""
 		info = ["INFO: "]
 
 		info.append("version: {}".format(get_version_string()))
@@ -239,6 +251,9 @@ class Server(object):
 
 
 def get_version_string():
+	"""Return the version string as the pip tool sees it.
+
+	See pkg_resources.get_distribution().version"""
 	try:
 		return pkg_resources.get_distribution("mrbeam_ledstrips").version
 	except:
@@ -246,11 +261,14 @@ def get_version_string():
 
 
 def start_server(config):
+	"""Start """
 	s = Server(config["socket"], config)
 	s.start()
 
 
 def server():
+	"""Main entry point when running ``mrbeam_ledstrips`` from the cli."""
+
 	parser = argparse.ArgumentParser(parents=[])
 
 	parser.add_argument("-c", "--config", default="/etc/mrbeam_ledstrips.yaml", help="Config file location")
@@ -301,7 +319,7 @@ def server():
 	                    level=logging.DEBUG if args.debug else logging.INFO)
 	if not args.quiet:
 		console_handler = logging.StreamHandler()
-		console_handler.formatter = logging.Formatter(fmt='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+		console_handler.formatter = logging.Formatter(fmt=logging_format)
 		console_handler.level = logging.DEBUG if args.debug else logging.INFO
 		logging.getLogger('').addHandler(console_handler)
 

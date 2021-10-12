@@ -50,6 +50,7 @@ class TestRollback(LEDLoopTester):
         assert self.leds.state == DEFAULT_STATE
 
     def test_starved_rollback(self):
+        """Test rollback when overshooting the length of the history."""
 
         self._add_unique_led_states(MAX_HISTORY)
 

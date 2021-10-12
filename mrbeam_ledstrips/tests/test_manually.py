@@ -18,6 +18,9 @@ tests_dir_path = os.path.dirname(os.path.realpath(__file__))
 PNG_DIR = os.path.join(tests_dir_path, "../..", "extras", "png")
 
 def user_accept(prompt):
+    """Prompt the user with a yes/no dialogue. Returns a ``bool`` depending on the answer.
+
+    default: Yes (True)"""
     user_in = input(prompt + " [Y/n]").strip().lower()
     while user_in and not user_in[0] in ["y", "n"]:
         user_in = input(" Please choose 'y' or 'n'").strip().lower()
@@ -46,8 +49,6 @@ class TestSolidLights:
 
         assert user_accept("Did you see R, G then B lights?")
 
-
-    # def test_rollback(self):
 
 class TestCommands(LEDLoopTester):
     """Test the animation loop with the animation methods."""
@@ -82,7 +83,6 @@ class TestCommands(LEDLoopTester):
 
     @pytest.mark.datafiles(os.path.join(PNG_DIR, "colordots.png"))
     def test_png(self, datafiles):
-        # my_color = tuple(str(random.randint(0, 255)) for _ in range(3))
         self.leds.config['png_folder'] = str(datafiles)
         self.leds.change_state(":".join(["png", "colordots.png"]))
         sleep(3) #ANIMATION_TIME_IN_SEC)
