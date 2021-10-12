@@ -227,7 +227,6 @@ class LEDs():
 					self.past_states.append(self.state)
 				self.state = nu_state
 				self.frame = 0
-				time.sleep(0.2)
 			if self.state == nu_state or \
 					nu_state in COMMANDS['ROLLBACK'] or \
 					nu_state in COMMANDS['IGNORE_NEXT_COMMAND'] or \
