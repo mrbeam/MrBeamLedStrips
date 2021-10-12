@@ -2,6 +2,7 @@
 from __future__ import absolute_import
 from __future__ import print_function
 import argparse
+from itertools import chain
 import logging
 import sys
 import threading
@@ -11,7 +12,7 @@ import traceback
 import yaml
 import os
 import pkg_resources
-from .state_animations import LEDs, COMMANDS
+from .state_animations import LEDs, COMMANDS, SETTINGS
 
 SOCK_BUF_SIZE = 4 * 1024
 PY3 = sys.version_info >= (3,0)
@@ -172,10 +173,9 @@ class Server(object):
 						connection.sendall(str("ERROR : error while processing message from client") + '\x00')
 					except:
 						pass
-		except (KeyboardInterrupt, SystemExit):
-			pass
-		except Exception:
-			self.logger.exception("Exception in socket monitor: ")
+		except Exception as e:
+			self.logger.exception("Exception in socket monitor: %s", e)
+			raise
 		finally:
 			sock.close()
 			os.unlink(server_address)
@@ -187,17 +187,25 @@ class Server(object):
 		self.animation.daemon = True
 		self.animation.name = "StateAnimations"
 		self.animation.start()
-		self._socket_monitor(self.server_address, callback=self.on_state_change)
+		self._socket_monitor(self.server_address, callback=self.parse_socket_msg)
 
-	def on_state_change(self, state):
+	def parse_socket_msg(self, command):
 		response = "ERRROR"
-		if (state in ('info', '?')):
+		if command in ('info', '?'):
 			info = self.get_info()
 			self.logger.info(info)
-			response = info
+			return info
+		elif command.startswith("set:"):
+			available_settings = list(chain(SETTINGS.values()))
+			_split = command.split(":")
+			if len(_split) <= 2:
+				return "ERROR : Need to specifiy set:SETTING:VAL where SETTING is \{{}\}".format(",".join(available_settings))
+			elif _split[1] not in available_settings:
+				return "ERROR, {} not in available settings \\{{}\\}".format(_split[1], available_settings)
+			setting = _split[1]
+			return self.leds.set_setting(_split[1], _split[2:])
 		else:
-			response = self.leds.change_state(state)
-		return response
+			return self.leds.change_state(command)
 
 	def get_info(self):
 		info = ["INFO: "]

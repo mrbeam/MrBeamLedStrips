@@ -219,17 +219,6 @@ class LEDs():
 				print(("state change ignored! keeping: " + str(self.state) + ", ignored: " + str(nu_state)))
 				return "IGNORED {state}   # {old} -> {nu}".format(old=self.state, nu=self.state, state=nu_state)
 
-			# Settings
-			if nu_state.startswith('set'):
-				token = nu_state.split(':')
-				_ = token.pop(0)
-				setting = token.pop(0)
-				val = self.set_setting(setting, token)
-				if val is None:
-					return "ERROR setting {setting} -> {val}".format(setting=setting, val=val)
-				else:
-					return "OK setting {setting} -> {val}".format(setting=setting, val=val)
-
 			old_state = self.state
 			if self.state != nu_state:
 				print(("state change " + str(self.state) + " => " + str(nu_state)))
@@ -1009,21 +998,26 @@ class LEDs():
 	def set_state_unknown(self):
 		self.state = COMMANDS['UNKNOWN'][0]
 
-
 	def set_setting(self, setting, params):
-		self.logger.info('set_setting: setting %s, params %s', setting, params)
-		if setting in SETTINGS['BRIGHTNESS']:
-			return self.set_brightness(params[0])
-		elif setting in SETTINGS['INSIDE_BRIGHTNESS']:
-			return self.set_inside_brightness(params[0])
-		elif setting in SETTINGS['EDGE_BRIGHTNESS']:
-			return self.set_edge_brightness(params[0])
-		elif setting in SETTINGS['FPS']:
-			return self.set_fps(params[0])
-		elif setting in SETTINGS['SPREAD_SPECTRUM']:
-			return self.spread_spectrum(params)
+		val = None
+		try:
+			self.logger.info('set_setting: setting %s, params %s', setting, params)
+			if setting in SETTINGS['BRIGHTNESS']:
+				val = self.set_brightness(params[0])
+			elif setting in SETTINGS['INSIDE_BRIGHTNESS']:
+				val = self.set_inside_brightness(params[0])
+			elif setting in SETTINGS['EDGE_BRIGHTNESS']:
+				val = self.set_edge_brightness(params[0])
+			elif setting in SETTINGS['FPS']:
+				val = self.set_fps(params[0])
+			elif setting in SETTINGS['SPREAD_SPECTRUM']:
+				val = self.spread_spectrum(params)
+		except ValueError:
+			return "ERROR, could not parse the setting or parameters {}:{}".format(setting, params)
+		if val is None:
+			return "ERROR setting {}".format(setting)
 		else:
-			return None
+			return "OK setting {} -> {}".format(setting, val)
 
 	def set_brightness(self, bright):
 		br = self._parse8bit(bright)
