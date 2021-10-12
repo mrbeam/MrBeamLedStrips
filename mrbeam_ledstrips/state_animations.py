@@ -28,12 +28,12 @@ else:
 # LED strip configuration:
 # Serial numbering of LEDs on the Mr Beam modules
 # order is top -> down
-LEDS_RIGHT_BACK =  [0, 1, 2, 3, 4, 5, 6]
-LEDS_RIGHT_FRONT = [7, 8, 9, 10, 11, 12, 13]
-LEDS_LEFT_FRONT =  [32, 33, 34, 35, 36, 37, 38]
-LEDS_LEFT_BACK =   [39, 40, 41, 42, 43, 44, 45]
+LEDS_RIGHT_BACK =  list(range(0, 7))
+LEDS_RIGHT_FRONT = list(range(7, 7+7))
+LEDS_LEFT_FRONT =  list(range(32, 32+7))
+LEDS_LEFT_BACK =   list(range(39, 39+7))
 # order is right -> left
-LEDS_INSIDE =      [14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31]
+LEDS_INSIDE =      list(range(14, 14+18))
 
 class Colors(Enum):
 	"""RGB Color in 24-bit values"""
@@ -131,6 +131,18 @@ COMMANDS = dict(
 	BLINK_CUSTOM_COLOR         = ['blink_color', 'Upload', 'upload'], # yellow blink was the lonng deprected 'upload'
 	FOCUS_TOOL_STATE           = ['focus_tool_state'],
 	FOCUS_TOOL_IDLE            = ['focus_tool_idle'],
+)
+
+"""A list of commands which require arguments"""
+COMMANDS_REQ_ARG = (
+    "CUSTOM_COLOR",
+    "FLASH_CUSTOM_COLOR",
+    "BLINK_CUSTOM_COLOR",
+    "PNG_ANIMATION",
+    "PROGRESS",
+    "LISTENING_COLOR",
+    "SLICING_PROGRESS",
+    "DEBUG_STOP",
 )
 
 SETTINGS = dict(
