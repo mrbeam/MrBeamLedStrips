@@ -119,8 +119,6 @@ COMMANDS = dict(
 	CUSTOM_COLOR               = ['color'],
 	FLASH_CUSTOM_COLOR         = ['flash_color'],
 	BLINK_CUSTOM_COLOR         = ['blink_color', 'Upload', 'upload'], # yellow blink was the lonng deprected 'upload'
-	FOCUS_TOOL_STATE           = ['focus_tool_state'],
-	FOCUS_TOOL_IDLE            = ['focus_tool_idle'],
 )
 
 """A list of commands which require arguments"""
@@ -609,30 +607,6 @@ class LEDs():
 			inside_leds = LEDS_INSIDE
 			for i in range(len(inside_leds)):
 				self._set_color(inside_leds[i], color_inside)
-		self._update()
-
-	def focus_tool_idle(self, frame, state_length=2):
-		leds = LEDS_FOCUS_TOOL
-		f_count = state_length * self.fps
-		dim = abs((frame/state_length % f_count*2) - (f_count-1))/f_count
-
-		color = self.dim_color(Color(64,64,64), dim)
-		l = len(leds)
-		for i in range(l):
-			if i == l-1:
-				self._set_color(leds[i], color)
-			else:
-				self._set_color(leds[i], OFF)
-		self._update()
-
-	def focus_tool_state(self, frame, states):
-		for i in range(len(states)):
-			idx, state = states[i]
-			color = FOCUS_TOOL_COLORS.get(state, OFF)
-			if(state == "P" and (frame % 10) > 5):
-				color = OFF
-			if(color != None):
-				self._set_color(LEDS_FOCUS_TOOL[idx], color)
 		self._update()
 
 	def dim_color(self, col, brightness):
