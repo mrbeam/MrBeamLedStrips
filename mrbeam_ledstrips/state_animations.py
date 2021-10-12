@@ -46,16 +46,6 @@ class Colors(Enum):
 	ORANGE = Color(226, 83, 3)
 	RED2 =   Color(2, 0, 0)
 
-
-FOCUS_TOOL_COLORS = {
-	'O': Color(0,64,0), # OK
-	'W': Color(64,32,0), # WARNING
-	'E': Color(127,0,0), # ERROR
-	'S': None, # don't change / skip
-	'N': OFF, # OFF
-	'P': Color(32,32,32) # Progress
-}
-
 COMMANDS = dict(
 	UNKNOWN                    = ['unknown'],
 	DEBUG_STOP                 = ['DebugStop'],
