@@ -1,7 +1,7 @@
 from __future__ import absolute_import
 import pytest
 from itertools import chain
-from os import path
+import os.path
 import random
 from six.moves import input
 from time import sleep
@@ -11,11 +11,11 @@ from mrbeam_ledstrips.server import get_config
 
 from . import LEDLoopTester
 
-ANIMATION_TIME = .5
+ANIMATION_TIME_IN_SEC = .5
 """Duration for which to test the animations"""
 
-tests_dir_path = path.dirname(path.realpath(__file__))
-PNG_DIR = path.join(tests_dir_path, "../..", "extras", "png")
+tests_dir_path = os.path.dirname(os.path.realpath(__file__))
+PNG_DIR = os.path.join(tests_dir_path, "../..", "extras", "png")
 
 def user_accept(prompt):
     user_in = input(prompt + " [Y/n]").strip().lower()
@@ -42,7 +42,7 @@ class TestSolidLights:
         """Test if all the colors can be seen. Perhaps a broken LED?"""
         for c in Colors.RED, Colors.GREEN, Colors.BLUE:
             self.leds.static_color(c)
-            sleep(ANIMATION_TIME)
+            sleep(ANIMATION_TIME_IN_SEC)
 
         assert user_accept("Did you see R, G then B lights?")
 
@@ -62,7 +62,7 @@ class TestCommands(LEDLoopTester):
                 continue
             print("Testing command %s" % comm)
             self.leds.change_state(comm_options[0])
-            sleep(ANIMATION_TIME)
+            sleep(ANIMATION_TIME_IN_SEC)
             # The thread will die if an exception is raised
             # Error logs will be shown in pytest
             assert self.led_thread.is_alive()
@@ -77,13 +77,13 @@ class TestCommands(LEDLoopTester):
 
         for comm in "CUSTOM_COLOR", "FLASH_CUSTOM_COLOR", "BLINK_CUSTOM_COLOR":
             self.leds.change_state(":".join(chain([COMMANDS[comm][0]], my_color)))
-            sleep(ANIMATION_TIME)
+            sleep(ANIMATION_TIME_IN_SEC)
             assert self.led_thread.is_alive()
 
-    @pytest.mark.datafiles(path.join(PNG_DIR, "colordots.png"))
+    @pytest.mark.datafiles(os.path.join(PNG_DIR, "colordots.png"))
     def test_png(self, datafiles):
         # my_color = tuple(str(random.randint(0, 255)) for _ in range(3))
         self.leds.config['png_folder'] = str(datafiles)
         self.leds.change_state(":".join(["png", "colordots.png"]))
-        sleep(3) #ANIMATION_TIME)
+        sleep(3) #ANIMATION_TIME_IN_SEC)
         assert self.led_thread.is_alive()
