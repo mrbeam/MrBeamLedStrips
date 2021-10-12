@@ -1,13 +1,15 @@
+from __future__ import absolute_import
 import pytest
 from itertools import chain
 from os import path
 import random
 from six.moves import input
 from time import sleep
-from threading import Thread
 
 from mrbeam_ledstrips.state_animations import LEDs, Colors, COMMANDS, COMMANDS_REQ_ARG
 from mrbeam_ledstrips.server import get_config
+
+from . import LEDLoopTester
 
 ANIMATION_TIME = .5
 """Duration for which to test the animations"""
@@ -47,19 +49,11 @@ class TestSolidLights:
 
     # def test_rollback(self):
 
-class TestCommands:
+class TestCommands(LEDLoopTester):
     """Test the animation loop with the animation methods."""
 
-    def setup_class(self):
-        # Load an empty config (uses default settings)
-        config = get_config("")
-        self.leds = LEDs(config)
-        self.led_thread = Thread(target=self.leds.loop)
-        self.led_thread.start()
-
-    def teardown_class(self):
-        self.leds.stop()
-        self.led_thread.join(timeout=1)
+    setup_class = LEDLoopTester.setup_leds
+    teardown_class = LEDLoopTester.teardown_leds
 
     def test_all_commands(self):
         for comm, comm_options in COMMANDS.items():

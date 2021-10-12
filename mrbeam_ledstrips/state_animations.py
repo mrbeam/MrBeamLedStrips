@@ -141,6 +141,9 @@ SETTINGS = dict(
 	EDGE_BRIGHTNESS            = ['edge_brightness', 'eb'],
 )
 
+DEFAULT_STATE = COMMANDS['LISTENING'][0]
+"""The state to revert to if no other state is applicable."""
+
 MAX_HISTORY = 10
 """The number of previous LED commands to keep track of."""
 
@@ -168,7 +171,7 @@ class LEDs():
 					spread_spectrum_channel_width=self.config['spread_spectrum_channel_width'],
 					spread_spectrum_hopping_delay_ms=self.config['spread_spectrum_hopping_delay_ms'])
 		self.logger.info("LEDs strip initialized")
-		self.state = COMMANDS['LISTENING'][0]
+		self.state = DEFAULT_STATE
 		self.past_states = deque([], MAX_HISTORY)
 		signal.signal(signal.SIGTERM, self.clean_exit)  # switch off the LEDs on exit
 		self.job_progress = 0
@@ -672,18 +675,19 @@ class LEDs():
 
 	def rollback(self, steps=1):
 		self._last_interior = None
+		prev_state = self.state
 		if len(self.past_states) >= steps:
-			for x in range(0, steps):
+			for x in range(steps):
 				old_state = self.past_states.pop()
-				self.logger.info("Rollback step %s/%s: rolling back from '%s' to '%s'", x, steps, self.state, old_state)
-				self.state = old_state
+			self.state = old_state
+		elif len(self.past_states) > 0:
+			self.logger.warn("Rollback: limited to %d steps instead of %d", len(self.past_states), steps)
+			self.state = self.past_states[0]
+			self.past_states.clear()
 		else:
-			self.logger.warn("Rollback: Can't rollback %s steps, max steps: %s", steps, len(self.past_states))
-			if len(self.past_states) >= 1:
-				self.state = self.past_states.pop()
-			else:
-				self.state = COMMANDS['LISTENING'][0]
-			self.logger.warn("Rollback: fallback to %s", self.state)
+			self.state = DEFAULT_STATE
+			self.logger.warn("Rollback: no history, fallback to %s", self.state)
+		self.logger.info("Rollback from '%s' to '%s'", prev_state, self.state)
 			
 	def rollback_after_frames(self, frame, max_frames=0, steps=1):
 		try:
