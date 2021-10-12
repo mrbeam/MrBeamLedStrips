@@ -285,7 +285,7 @@ class LEDs():
 				return None # abort if img is too small.
 			else:
 				# init animation array
-				rgb = img_4channel[:,:,:3]
+				bgr = img_4channel[:,:,:3]
 				animation = [None]*height
 				for row in range(height):
 					line = [None]*self.config['led_count']
@@ -293,7 +293,7 @@ class LEDs():
 					if(width < self.config['led_count']): # small png => inside LEDs are white, all corner LEDs equal.
 						self.logger.info("small png => corner LEDs only")
 						for col in range(corner_leds):
-							b,g,r = rgb[row, corner_leds - 1 - col]
+							b,g,r = bgr[row, corner_leds - 1 - col]
 							idx_rb = LEDS_RIGHT_BACK[col]
 							idx_rf = LEDS_RIGHT_FRONT[col]
 							idx_lf = LEDS_LEFT_FRONT[col]
@@ -308,7 +308,7 @@ class LEDs():
 
 					else: # big png => all LEDs are individually controlled
 						for col in range(self.config['led_count']):
-							b,g,r = rgb[row, self.config['led_count'] - 1 - col]
+							b,g,r = bgr[row, self.config['led_count'] - 1 - col]
 							line[col] = Color(r,g,b)
 					
 					animation[row] = line
@@ -336,10 +336,10 @@ class LEDs():
 			self._update()
 
 
-	def fade_off(self, state_length=0.5, follow_state='ClientOpened'):
+	def fade_off(self, state_length=10/28, follow_state='ClientOpened'):
 		involved_registers = [LEDS_RIGHT_FRONT, LEDS_LEFT_FRONT, LEDS_RIGHT_BACK, LEDS_LEFT_BACK]
 		self.logger.info("fade_off()")
-		for b in self._mylinspace(self.brightness/255.0, 0, 10):
+		for b in self._mylinspace(self.brightness/255.0, 0, int(state_length * self.fps) ):
 			for r in involved_registers:
 				for i in range(len(r)):
 					self._set_color(r[i], self.dim_color(self.strip.getPixelColor(r[i]), b))
@@ -349,8 +349,11 @@ class LEDs():
 
 	@staticmethod
 	def _mylinspace(start, stop, count):
-		step = (stop - start) / float(count)
-		return [start + i * step for i in range(count)]
+		step = (stop - start) / count
+		i = start
+		for i in range(count):
+		    yield i
+		    i += step
 
 	# pulsing red from the center
 	def error(self, frame):
@@ -1019,43 +1022,25 @@ class LEDs():
 			return "OK setting {} -> {}".format(setting, val)
 
 	def set_brightness(self, bright):
-		br = self._parse8bit(bright)
-		if(br):
-			self.brightness = br
-			return self.brightness
-		else:
-			return None
-	
-	def set_inside_brightness(self, bright):
-		br = self._parse8bit(bright)
-		#self.logger.info('set_inside_brightness: %i', br)
+		self.brightness = self._parse8bit(bright)
+		return self.brightness
 
-		if(br):
-			self.inside_brightness = br
-			self.update_required = True
-			return self.inside_brightness
-		else:
-			return None
-	
+	def set_inside_brightness(self, bright):
+		self.inside_brightness = self._parse8bit(bright)
+		self.update_required = True
+		return self.inside_brightness
+
 	def set_edge_brightness(self, bright):
-		br = self._parse8bit(bright)
-		if(br):
-			self.edge_brightness = br
-			self.update_required = True
-			return self.edge_brightness
-		else:
-			return None
+		self.edge_brightness = self._parse8bit(bright)
+		self.update_required = True
+		return self.edge_brightness
 
 	def _parse8bit(self, val):
 		try:
-			val = int(val)
-		except:
-			return None
-		if val > 255:
-			val = 255
-		elif val < 0:
-			val = 0
-		return val
+			return int(val) & 0xff
+		except ValueError:
+			self.logger.error("Could not parse {} as an 8 bit integer".format(repr(val)))
+			raise
 
 	def _set_color(self, i, color):
 		if isinstance(color, Colors):
