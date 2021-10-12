@@ -46,6 +46,9 @@ class TestRollback(LEDLoopTester):
         self.leds.rollback()
         assert self.leds.state == DEFAULT_STATE
 
+        self.leds.rollback(3)
+        assert self.leds.state == DEFAULT_STATE
+
     def test_starved_rollback(self):
 
         self._add_unique_led_states(MAX_HISTORY)
