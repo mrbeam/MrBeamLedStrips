@@ -248,7 +248,7 @@ class LEDs():
 	    """
 	    value = value or DEFAULT_FPS
 	    # abs() also verifies whether `value` is numerical
-	    self._fps = abs(value)
+	    self._fps = max(abs(value), 1)
 
 	@property
 	def frame_duration(self):
