@@ -178,8 +178,7 @@ def _exec_as_user(cmd_list, user_name):
 	returncode = process.returncode
 
 	if returncode != 0:
-		_logger.warn("exec_as_user() ran as user '%s' (uid:%s, gid:%s) returncode: %s, stdout: %s", user_name, user_uid, user_gid, returncode, stdout)
-
+		_logger.warning("exec_as_user() ran as user '%s' (uid:%s, gid:%s) returncode: %s, stdout: %s", user_name, user_uid, user_gid, returncode, stdout)
 	return returncode == 0
 
 

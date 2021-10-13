@@ -32,6 +32,7 @@ LEDS_RIGHT_BACK =  list(range(0, 7))
 LEDS_RIGHT_FRONT = list(range(7, 7+7))
 LEDS_LEFT_FRONT =  list(range(32, 32+7))
 LEDS_LEFT_BACK =   list(range(39, 39+7))
+OUTSIDE_LEDS = [LEDS_RIGHT_FRONT, LEDS_LEFT_FRONT, LEDS_RIGHT_BACK, LEDS_LEFT_BACK]
 # order is right -> left
 LEDS_INSIDE =      list(range(14, 14+18))
 
@@ -383,12 +384,11 @@ class LEDs():
 
 	def fade_off(self, state_length=10/28, follow_state='ClientOpened'):
 		"""Turns the side LEDs off progressively."""
-		involved_registers = [LEDS_RIGHT_FRONT, LEDS_LEFT_FRONT, LEDS_RIGHT_BACK, LEDS_LEFT_BACK]
 		self.logger.info("fade_off()")
 		for b in _mylinspace(self.brightness/255.0, 0, int(state_length * self.fps) ):
-			for r in involved_registers:
+			for r in OUTSIDE_LEDS:
 				for i in range(len(r)):
-					self._set_color(r[i], self.dim_color(self.strip.getPixelColor(r[i]), b))
+					self._set_color(r[i], dim_color(self.strip.getPixelColor(r[i]), b))
 			self._update()
 			time.sleep(state_length * self.frame_duration)
 		self.change_state(follow_state)
@@ -399,9 +399,6 @@ class LEDs():
 
 	def flash(self, frame, color=Colors.RED, state_length=2):
 		"""Does a pulsating animation starting from the center of the side LEDs."""
-		involved_registers = [LEDS_RIGHT_FRONT, LEDS_LEFT_FRONT, LEDS_RIGHT_BACK, LEDS_LEFT_BACK]
-		l = len(LEDS_RIGHT_BACK)
-
 		frames = [
 			[0, 0, 0, 0, 0, 0, 0],
 			[0, 0, 0, 1, 0, 0, 0],
@@ -416,19 +413,20 @@ class LEDs():
 
 		f = int(round(frame / state_length)) % len(frames)
 
-		for r in involved_registers:
-			for i in range(l):
-				if frames[f][i] >= 1:
-					self._set_color(r[i], color)
-				else:
-					self._set_color(r[i], Colors.OFF)
+		for strip in OUTSIDE_LEDS:
+			for i, led_id in enumerate(strip):
+				self._set_color(led_id, dim_color(color, frames[f][i]))
 		self._update()
+
 
 	def breathing(self, frame, color=Colors.ORANGE, bg_color=Colors.OFF, state_length=2):
 		"""Fade in and out with a given color on the side LEDs.
 		The bottom of the side LEDs are illuminated with ``color``.
-		The top of the LEDs use the background color ``bg_color``."""
-		involved_registers = [LEDS_RIGHT_FRONT, LEDS_LEFT_FRONT, LEDS_RIGHT_BACK, LEDS_LEFT_BACK]
+		The top of the LEDs use the background color ``bg_color``.
+
+		It is also possible to use a list of colors for ``color``.
+		In that case, it changes between these colors between each "breath"
+		"""
 		l = len(LEDS_RIGHT_BACK)
 
 		f_count = state_length * self.fps
@@ -438,36 +436,30 @@ class LEDs():
 		if isinstance(color, list):
 			color_index = int(frame / f_count / 2) % len(color)
 			my_color = color[color_index]
-		dim_color = self.dim_color(my_color, dim)
 
-		for r in involved_registers:
-			for i in range(l):
-				if i >= l-(1 if bg_color==Colors.OFF else 2):
-					self._set_color(r[i], dim_color)
-				else:
-					self._set_color(r[i], bg_color)
-		self._update()
+		self.breathing_static(frame, dim_color(my_color, dim), bg_color, fade_in=False)
 
-	def breathing_static(self, frame, color=Colors.ORANGE, dim=0.2, fade_in=True):
-		involved_registers = [LEDS_RIGHT_FRONT, LEDS_LEFT_FRONT, LEDS_RIGHT_BACK, LEDS_LEFT_BACK]
-		l = len(LEDS_RIGHT_BACK)
+
+
+	def breathing_static(self, frame, color=Colors.ORANGE, bg_color=Colors.OFF, fade_in=True, state_length = 2):
+		"""Show 1 prominent ``color`` and a less prominent ``bg_color`` on the side LEDs.
+		The bottom of the side LEDs are illuminated with ``color``.
+		The top 1 or 2 LEDs use the background color ``bg_color``."""
 
 		if fade_in:
-			state_length = 2
 			f_count = state_length * self.fps
 			if frame < f_count:
-				dim_breath = 1 - (abs((frame / state_length % f_count * 2) - (f_count - 1)) / f_count)
-				if dim_breath < dim:
-					self.breathing(frame, color=color, state_length=state_length)
-					return
-
-		dim_color = self.dim_color(color, dim)
-		for r in involved_registers:
-			for i in range(l):
-				if i == l-1:
-					self._set_color(r[i], dim_color)
+				self.breathing(frame, color, bg_color, state_length)
+				return
+		# Need to give more space for the background color if is not OFF
+		nb_colored_leds = len(LEDS_RIGHT_BACK)-(1 if bg_color==Colors.OFF else 2)
+		for strip in OUTSIDE_LEDS:
+			for i, led_id in enumerate(strip):
+				if i >= nb_colored_leds:
+					_color = color
 				else:
-					self._set_color(r[i], Colors.OFF)
+					_color = bg_color
+				self._set_color(led_id, _color)
 		self._update()
 
 	def interior_fade_in(self, frame, force=False):
@@ -481,24 +473,17 @@ class LEDs():
 			elif self._last_interior != Colors.WHITE:
 				dim_breath = 1 - (abs((frame / state_length % f_count * 2) - (f_count - 1)) / f_count)
 				if dim_breath < 1.0:
-					interior_color = self.dim_color(Colors.WHITE, dim_breath)
+					interior_color = dim_color(Colors.WHITE, dim_breath)
 		self.set_interior(interior_color, perform_update=False)
 
 	def all_on(self):
-		involved_registers = [LEDS_RIGHT_FRONT, LEDS_LEFT_FRONT, LEDS_RIGHT_BACK, LEDS_LEFT_BACK]
-		l = len(LEDS_RIGHT_BACK)
-
-		color = Colors.WHITE
-		for r in involved_registers:
-			l = len(r)
-			for i in range(l):
-				self._set_color(r[i], color)
+		"""Turn all LEDs white, max brightness."""
 		self.brightness = 255
+		self.static_color(Colors.WHITE)
 		self._update()
 
-	# alternating upper and lower yellow
 	def blink(self, frame, color=Colors.YELLOW, state_length=8):
-		involved_registers = [LEDS_RIGHT_FRONT, LEDS_LEFT_FRONT, LEDS_RIGHT_BACK, LEDS_LEFT_BACK]
+		"""Light up the top and bottom alternatively. """
 		l = len(LEDS_RIGHT_BACK)
 		fwd_bwd_range = list(range(l)) + list(range(l-1, -1, -1))
 
@@ -509,23 +494,19 @@ class LEDs():
 
 		f = int(round(frame / state_length)) % len(frames)
 
-		for r in involved_registers:
-			for i in range(l):
-				if frames[f][i] >= 1:
-					self._set_color(r[i], color)
-				else:
-					self._set_color(r[i], Colors.OFF)
+		for strip in OUTSIDE_LEDS:
+			for i, led_id in enumerate(strip):
+				self._set_color(led_id, dim_color(color, frames[f][i]))
 
 		self._update()
 
 	def progress(self, value, frame, color_done=Colors.WHITE, color_drip=Colors.BLUE, state_length=2):
-		involved_registers = [LEDS_RIGHT_FRONT, LEDS_LEFT_FRONT, LEDS_RIGHT_BACK, LEDS_LEFT_BACK]
 		l = len(LEDS_RIGHT_BACK)
 		c = int(round(frame / state_length)) % l
 
 		value = parse_int(value)
 
-		for r in involved_registers:
+		for r in OUTSIDE_LEDS:
 			for i in range(l):
 
 				bottom_up_idx = l-i-1
@@ -543,20 +524,19 @@ class LEDs():
 
 	# pauses the progress animation with a pulsing drip
 	def progress_pause(self, value, frame, breathing=True, color_done=Colors.WHITE, color_drip=Colors.BLUE, state_length=1.5):
-		involved_registers = [LEDS_RIGHT_FRONT, LEDS_LEFT_FRONT, LEDS_RIGHT_BACK, LEDS_LEFT_BACK]
 		l = len(LEDS_RIGHT_BACK)
 		f_count = state_length * self.fps
 		dim = abs((frame/state_length % f_count*2) - (f_count-1))/f_count if breathing else 1
 
 		value = parse_int(value)
 
-		for r in involved_registers:
+		for r in OUTSIDE_LEDS:
 			for i in range(l):
 				bottom_up_idx = l-i-1
 				threshold = value / 100.0 * (l-1)
 				if threshold < bottom_up_idx:
 					if i == bottom_up_idx / 2:
-						color = self.dim_color(color_drip, dim)
+						color = dim_color(color_drip, dim)
 						self._set_color(r[i], color)
 					else:
 						self._set_color(r[i], Colors.OFF)
@@ -575,56 +555,73 @@ class LEDs():
 		self._update()
 
 	def job_finished(self, frame, state_length=1):
-		involved_registers = [LEDS_RIGHT_FRONT, LEDS_LEFT_FRONT, LEDS_RIGHT_BACK, LEDS_LEFT_BACK]
+		"""Progressively turn the corner LEDs completely green, then dim them.
+
+		FIXME : copy pasta of dust_extraction
+		"""
 		l = len(LEDS_RIGHT_BACK)
 		f = int(round(frame / state_length)) % (self.fps + l*2)
 
+		# NOTE: This can be simplified by removing the `if` and use
+		#         strip[:min(int(round(f/2)), l)]
 		if f < l*2:
-			for i in range(int(round(f/2))-1, -1, -1):
-				for r in involved_registers:
-					self._set_color(r[i], Colors.GREEN)
+			for strip in OUTSIDE_LEDS:
+				for led_id in reversed(strip[:int(round(f/2))]):
+					self._set_color(led_id, Colors.GREEN)
 
 		else:
-			for i in range(l-1, -1, -1):
-				for r in involved_registers:
+			for strip in OUTSIDE_LEDS:
+				for led_id in reversed(strip):
+					# FIXME : brightness is negative, this will give the "dimmed color" full brightness.
 					brightness = 1 - (f - 2*l)/self.fps * 1.0
-					col = self.dim_color(Colors.GREEN, brightness)
+					col = dim_color(Colors.GREEN, brightness)
 					self._set_color(r[i], col)
 
 		self._update()
 
 	def dust_extraction(self, frame, state_length=1):
-		involved_registers = [LEDS_RIGHT_FRONT, LEDS_LEFT_FRONT, LEDS_RIGHT_BACK, LEDS_LEFT_BACK]
+		"""Progressively turn the corner LEDs completely white, then dim them.
+		FIXME : copy pasta of job_finished
+		"""
+
 		l = len(LEDS_RIGHT_BACK)
 		f = int(round(frame / state_length)) % (self.fps + l*2)
 
+		# NOTE: This can be simplified by removing the `if` and use
+		#         strip[:min(int(round(f/2)), l)]
 		if f < l*2:
-			for i in range(int(round(f/2))-1, -1, -1):
-				for r in involved_registers:
-					self._set_color(r[i], Colors.WHITE)
+			for strip in OUTSIDE_LEDS:
+				for led_id in reversed(strip[:int(round(f/2))]):
+					self._set_color(led_id, Colors.WHITE)
 
 		else:
-			for i in range(l-1, -1, -1):
-				for r in involved_registers:
+			for strip in OUTSIDE_LEDS:
+				for led_id in reversed(strip):
+					# FIXME : brightness is negative, this will give the "dimmed color" full brightness.
 					brightness = 1 - (f - 2*l)/self.fps * 1.0
-					col = self.dim_color(Colors.WHITE, brightness)
-					self._set_color(r[i], col)
+					col = dim_color(Colors.WHITE, brightness)
+					self._set_color(led_id, col)
 
 		self._update()
 
 	def shutdown(self, frame):
+		"""Turns the outside LEDs red"""
 		self.static_color(Colors.RED)
 
 	def shutdown_prepare(self, frame, duration_seconds=5):
+		"""Makes the LEDs blink red.
+		Dims the red color proggressively for ``duration_seconds``, then blinks bright red
+		"""
+
 		brightness_start_val = 205
 		peak_frame = duration_seconds * self.fps
 		on = frame % 10 > 3
 		brightness = None
 		if on:
 			if (frame <= peak_frame):
-				brightness = int(brightness_start_val - (brightness_start_val/peak_frame) * frame)
-				brightness = brightness if brightness > 0 else 0
-				myColor = self.dim_color(Colors.RED, brightness)
+				brightness = int(brightness_start_val * (1 - frame/peak_frame))
+				brightness = max(brightness, 0)
+				myColor = dim_color(Colors.RED, brightness)
 			else:
 				myColor = Colors.RED
 		else:
@@ -632,7 +629,11 @@ class LEDs():
 		self.static_color(myColor)
 
 	def set_interior(self, color, perform_update=True):
-		color = self.dim_color(color, self.inside_brightness/255.0)
+		"""Sets the interior lights to a specific ``color``.
+		It takes into account the inside_brightness settings.
+		:param perform_update: ???
+		"""
+		color = dim_color(color, self.inside_brightness/255.0)
 		if self._last_interior != color:
 			self._last_interior = color
 			leds = LEDS_INSIDE
@@ -643,52 +644,29 @@ class LEDs():
 				self._update()
 
 	def static_color(self, color=Colors.WHITE, color_inside=None):
-		outside_leds = LEDS_RIGHT_FRONT + LEDS_LEFT_FRONT + LEDS_RIGHT_BACK + LEDS_LEFT_BACK
-		for i in range(len(outside_leds)):
-			self._set_color(outside_leds[i], color)
+		"""Sets the exterior or interior lights to a specific color.
+		It takes into account the inside_brightness settings.
+		:param color: apply this color to the outside LEDs
+		:param color_inside: Apply this color to the interior LEDs
+		"""
+		if(color != None):
+			for led_strip in OUTSIDE_LEDS:
+				for led_id in led_strip:
+					self._set_color(led_id, color)
 		if(color_inside != None):
-			inside_leds = LEDS_INSIDE
-			for i in range(len(inside_leds)):
-				self._set_color(inside_leds[i], color_inside)
+			for led_id in LEDS_INSIDE:
+				self._set_color(led_id, color_inside)
 		self._update()
 
-	def dim_color(self, color, brightness):
-		'''
-		Change the brightness (only down) of the given color value.
-		:param col: the color value you want to change the brightness
-		:param brightness: the brightness factor between 0 and 1
-		:return: new Color with the chanes brightness
-		'''
-		if isinstance(color, Colors):
-		    color = color.value
-		r = (color & 0xFF0000) >> 16
-		g = (color & 0x00FF00) >> 8
-		b = (color & 0x0000FF)
-		return Color(int(r*brightness), int(g*brightness), int(b*brightness))
-
-	def demo_state(self, frame):
-		f = frame % 4300
-		if f < 1000:
-			return "idle"
-		elif f < 2000:
-			return "progress:" + str((f-1000)/20)
-		elif f < 2200:
-			return "pause:50"
-		elif f < 3200:
-			return "progress:" + str((f-1200)/20)
-		elif f < 4000:
-			return "job_finished"
-		else:
-			return "warning"
-
-	def set_fps(self, fps):
-		fps = int(fps)
-		if fps < 1: fps = 1
-		self.fps = fps
-		self.logger.info("set_fps() Changed animation speed: fps:%d (%s s/frame)" % (self.fps, self.frame_duration))
-		return fps
-
 	def spread_spectrum(self, params):
+		"""Resets the LEDs, and tries to use the given parameters.
+
+		if param[0] == "off", it does not use spread spectrum feature.
+
+		NOTE: spread spectrum is not available on the python3 version, but this function will not fail
+		:param params: List of parameters. If len(params) < 4, nothing is done.
+		:type params: Sized, Iterable
+		"""
 		enabled = params[0]
 		if enabled == 'off':
 			self._init_strip(self.config['led_freq_hz'], False)
@@ -715,6 +693,10 @@ class LEDs():
 			self.logger.info("spread_spectrum() invalid command or params. Usage: spread_spectrum:<on|off>:<center_frequency>:<bandwidth>:<channel_width>:<hopping_delay> eg: 'spread_spectrum:on:800000:180000:9000:1'")
 
 	def rollback(self, steps=1):
+		"""Go back a certain number of LED states.
+		Useful if you want to make a temporary LED animation.
+		If the ``LEDs`` history is not long enough, it will change the state to DEFAULT_STATE
+		"""
 		self._last_interior = None
 		prev_state = self.state
 		if len(self.past_states) >= steps:
@@ -722,19 +704,21 @@ class LEDs():
 				old_state = self.past_states.pop()
 			self.state = old_state
 		elif len(self.past_states) > 0:
-			self.logger.warn("Rollback: limited to %d steps instead of %d", len(self.past_states), steps)
+			self.logger.warning("Rollback: limited to %d steps instead of %d", len(self.past_states), steps)
 			self.state = self.past_states[0]
 			self.past_states.clear()
 		else:
 			self.state = DEFAULT_STATE
-			self.logger.warn("Rollback: no history, fallback to %s", self.state)
+			self.logger.warning("Rollback: no history, fallback to %s", self.state)
 		self.logger.info("Rollback from '%s' to '%s'", prev_state, self.state)
 			
 	def rollback_after_frames(self, frame, max_frames=0, steps=1):
-		try:
-			max_frames = int(max_frames)
-		except:
-			pass
+		"""Automatically perform the rollback after a certain number ``max_frames`` of frames
+		Useful if you want to make a temporary LED animation.
+
+		NOTE: The duration is impacted by the fps
+		"""
+		max_frames = int(max_frames)
 		if max_frames <= 0:
 			return
 		if frame > max_frames:
@@ -1028,7 +1012,8 @@ class LEDs():
 			elif setting in SETTINGS['EDGE_BRIGHTNESS']:
 				val = self.set_edge_brightness(params[0])
 			elif setting in SETTINGS['FPS']:
-				val = self.set_fps(params[0])
+				self.fps = int(params[0])
+				val = self.fps
 			elif setting in SETTINGS['SPREAD_SPECTRUM']:
 				val = self.spread_spectrum(params)
 		except ValueError:
@@ -1057,10 +1042,10 @@ class LEDs():
 		    color = color.value
 		c = self.strip.getPixelColor(i)
 		if(i in LEDS_INSIDE):
-			color = self.dim_color(color, self.inside_brightness/255.0)
+			color = dim_color(color, self.inside_brightness/255.0)
 			#self.logger.info('change_inside_brightness: %i, %i', i, color)
 		else:
-			color = self.dim_color(color, self.edge_brightness/255.0)
+			color = dim_color(color, self.edge_brightness/255.0)
 		if(c != color):
 			self.strip.setPixelColor(i, color)
 			self.update_required = True
@@ -1120,3 +1105,22 @@ def _parse8bit(self, val):
 		return int(val) & 0xff
 	except ValueError:
 		raise ValueError("Could not parse {} as an 8 bit integer".format(repr(val)))
+
+def dim_color(color, brightness):
+	'''
+	Returns a new color with a modified intensity relative to ``color``.
+	Corresponds roughly to ``color * brightness``. Only the intensity of ``color`` is impacted.
+	:param color: the color value you want to change the brightness
+	:type color: int, Colors
+	:param brightness: the brightness factor
+				- between 0 and 1 : reduces brightness
+				- over 1 : increases brightness
+	:return: new Color with the chanes brightness
+
+	'''
+	if isinstance(color, Colors):
+		color = color.value
+	r = (color & 0xFF0000) >> 16
+	g = (color & 0x00FF00) >> 8
+	b = (color & 0x0000FF)
+	return Color(int(r*brightness), int(g*brightness), int(b*brightness))
