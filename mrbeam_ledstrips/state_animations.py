@@ -252,7 +252,7 @@ class LEDs():
 	@property
 	def frame_duration(self):
 	    """Returns the duration of a single frame. Requires ``self.fps`` to be non-null."""
-	    return 1 / fps
+	    return 1 / self.fps
 
 	def stop(self):
 	    """Breaks the `while` in the loop() function to stop the animations."""
@@ -292,7 +292,7 @@ class LEDs():
 
 	def off(self):
 		"""Turn all LEDs off."""
-		self.static_color(self, color=Colors.OFF, color_inside=Colors.OFF)
+		self.static_color(color=Colors.OFF, color_inside=Colors.OFF)
 
 	def load_png(self, filename):
 		"""
@@ -385,7 +385,7 @@ class LEDs():
 		"""Turns the side LEDs off progressively."""
 		involved_registers = [LEDS_RIGHT_FRONT, LEDS_LEFT_FRONT, LEDS_RIGHT_BACK, LEDS_LEFT_BACK]
 		self.logger.info("fade_off()")
-		for b in self._mylinspace(self.brightness/255.0, 0, int(state_length * self.fps) ):
+		for b in _mylinspace(self.brightness/255.0, 0, int(state_length * self.fps) ):
 			for r in involved_registers:
 				for i in range(len(r)):
 					self._set_color(r[i], self.dim_color(self.strip.getPixelColor(r[i]), b))
@@ -652,16 +652,18 @@ class LEDs():
 				self._set_color(inside_leds[i], color_inside)
 		self._update()
 
-	def dim_color(self, col, brightness):
+	def dim_color(self, color, brightness):
 		'''
 		Change the brightness (only down) of the given color value.
 		:param col: the color value you want to change the brightness
 		:param brightness: the brightness factor between 0 and 1
 		:return: new Color with the chanes brightness
 		'''
-		r = (col & 0xFF0000) >> 16
-		g = (col & 0x00FF00) >> 8
-		b = (col & 0x0000FF)
+		if isinstance(color, Colors):
+		    color = color.value
+		r = (color & 0xFF0000) >> 16
+		g = (color & 0x00FF00) >> 8
+		b = (color & 0x0000FF)
 		return Color(int(r*brightness), int(g*brightness), int(b*brightness))
 
 	def demo_state(self, frame):

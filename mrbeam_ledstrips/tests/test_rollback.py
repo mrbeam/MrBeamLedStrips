@@ -15,9 +15,10 @@ class TestRollback(LEDLoopTester):
 
     def _add_unique_led_states(self, num=1):
         added_states = []
-        for i, (comm, comm_options) in enumerate(COMMANDS.items()):
+
+        for comm, comm_options in COMMANDS.items():
             # Send a list of unique states to the LEDs
-            if i >= 10:
+            if len(added_states) >= 10:
                 break
             elif comm in COMMANDS_REQ_ARG or comm == "ROLLBACK":
                 # Skipping because comm requires extra arguments

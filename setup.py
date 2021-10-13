@@ -146,7 +146,7 @@ class UninstallExtrasCommand(Command):
 
 install_requires = ["PyYaml"]
 if sys.version_info >= (3,0):
-	install_requires += ["rpi-ws281x; platform_machine=='armv7l'",]
+	install_requires += ["rpi-ws281x; platform_machine=='armv7l'", "opencv-python-headless==4.5.3.56"]
 setup(
 	name = "mrbeam_ledstrips",
 	version = '0.2.2',
