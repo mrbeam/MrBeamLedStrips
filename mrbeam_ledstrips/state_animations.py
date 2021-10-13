@@ -418,6 +418,10 @@ class LEDs():
 				self._set_color(led_id, dim_color(color, frames[f][i]))
 		self._update()
 
+	@staticmethod
+	def _breath_factor(frame, f_count, state_length=2):
+	    """Returns a value between 0 and 1.0 which fluctuates to mimic a 'breathing' change"""
+	    return 1 - (abs((frame/state_length % f_count*2) - (f_count-1))/f_count)
 
 	def breathing(self, frame, color=Colors.ORANGE, bg_color=Colors.OFF, state_length=2):
 		"""Fade in and out with a given color on the side LEDs.
@@ -430,7 +434,7 @@ class LEDs():
 		l = len(LEDS_RIGHT_BACK)
 
 		f_count = state_length * self.fps
-		dim = 1 - (abs((frame/state_length % f_count*2) - (f_count-1))/f_count)
+		dim = _breath_factor(frame, f_count, state_length)
 
 		my_color = color
 		if isinstance(color, list):
@@ -471,7 +475,7 @@ class LEDs():
 			if force and self._last_interior == Colors.WHITE and frame == 0:
 				interior_color = Colors.OFF
 			elif self._last_interior != Colors.WHITE:
-				dim_breath = 1 - (abs((frame / state_length % f_count * 2) - (f_count - 1)) / f_count)
+				dim_breath = _breath_factor(frame, f_count, state_length)
 				if dim_breath < 1.0:
 					interior_color = dim_color(Colors.WHITE, dim_breath)
 		self.set_interior(interior_color, perform_update=False)
@@ -524,28 +528,10 @@ class LEDs():
 
 	# pauses the progress animation with a pulsing drip
 	def progress_pause(self, value, frame, breathing=True, color_done=Colors.WHITE, color_drip=Colors.BLUE, state_length=1.5):
-		l = len(LEDS_RIGHT_BACK)
 		f_count = state_length * self.fps
-		dim = abs((frame/state_length % f_count*2) - (f_count-1))/f_count if breathing else 1
+		dim = _breath_factor(frame, f_count, state_length) if breathing else 1
 
-		value = parse_int(value)
-
-		for r in OUTSIDE_LEDS:
-			for i in range(l):
-				bottom_up_idx = l-i-1
-				threshold = value / 100.0 * (l-1)
-				if threshold < bottom_up_idx:
-					if i == bottom_up_idx / 2:
-						color = dim_color(color_drip, dim)
-						self._set_color(r[i], color)
-					else:
-						self._set_color(r[i], Colors.OFF)
-
-				else:
-					self._set_color(r[i], color_done)
-
-
-		self._update()
+		self.progress(value, frame, color_done, dim_color(color_drip, dim), state_length)
 
 	def idle(self, frame, color=Colors.WHITE, state_length=1):
 		leds = LEDS_RIGHT_BACK + list(reversed(LEDS_RIGHT_FRONT)) + LEDS_LEFT_FRONT + list(reversed(LEDS_LEFT_BACK))
@@ -700,7 +686,7 @@ class LEDs():
 		self._last_interior = None
 		prev_state = self.state
 		if len(self.past_states) >= steps:
-			for x in range(steps):
+			for _ in range(steps):
 				old_state = self.past_states.pop()
 			self.state = old_state
 		elif len(self.past_states) > 0:
