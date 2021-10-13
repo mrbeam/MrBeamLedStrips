@@ -144,7 +144,7 @@ class UninstallExtrasCommand(Command):
 			except Exception as e:
 				print(("Error while removing %s (%s), please remove manually" % (folder, e.message)))
 
-install_requires = ["PyYaml", "enum"]
+install_requires = ["PyYaml"]
 if sys.version_info >= (3,0):
 	install_requires += ["rpi-ws281x; platform_machine=='armv7l'",]
 setup(
