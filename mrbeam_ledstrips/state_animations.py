@@ -196,7 +196,6 @@ class LEDs():
 		self.edge_brightness = 255
 		self._fps = DEFAULT_FPS
 		self.fps = self.config['frames_per_second']
-		self.frame_duration = self._get_frame_duration(self.fps)
 		self.update_required = False
 		self._last_interior = None
 		self.ignore_next_command = None
@@ -235,6 +234,26 @@ class LEDs():
 			self.logger.info('Spread Spectrum not supported. Install Mr Beams custom rpi_ws281x instead of stock version.')
 		self.strip.begin()  # Init the LED-strip
 
+	@property
+	def fps(self):
+	    """Get the frames per second (fluidity)"""
+	    return self._fps
+
+	@fps.setter
+	def fps(self, value):
+	    """Set the frames per second (fluidity)
+	    Expects a positive ``value``.
+	    If the value is ``None`` or ``0``, the fps will be set to 1 Hz by default
+	    """
+	    value = value or DEFAULT_FPS
+	    # abs() also verifies whether `value` is numerical
+	    self._fps = abs(value)
+
+	@property
+	def frame_duration(self):
+	    """Returns the duration of a single frame. Requires ``self.fps`` to be non-null."""
+	    return 1 / fps
+
 	def stop(self):
 	    """Breaks the `while` in the loop() function to stop the animations."""
 	    self.running = False
@@ -272,9 +291,8 @@ class LEDs():
 		# sys.exit(0)
 
 	def off(self):
-		for i in range(self.strip.numPixels()):
-			self._set_color(i, Colors.OFF)
-		self._update()
+		"""Turn all LEDs off."""
+		self.static_color(self, color=Colors.OFF, color_inside=Colors.OFF)
 
 	def load_png(self, filename):
 		"""
@@ -374,14 +392,6 @@ class LEDs():
 			self._update()
 			time.sleep(state_length * self.frame_duration)
 		self.change_state(follow_state)
-
-	@staticmethod
-	def _mylinspace(start, stop, count):
-		step = (stop - start) / count
-		i = start
-		for i in range(count):
-		    yield i
-		    i += step
 
 	def error(self, frame):
 		"""pulsing red from the center"""
@@ -513,7 +523,7 @@ class LEDs():
 		l = len(LEDS_RIGHT_BACK)
 		c = int(round(frame / state_length)) % l
 
-		value = self._get_int_val(value)
+		value = parse_int(value)
 
 		for r in involved_registers:
 			for i in range(l):
@@ -538,7 +548,7 @@ class LEDs():
 		f_count = state_length * self.fps
 		dim = abs((frame/state_length % f_count*2) - (f_count-1))/f_count if breathing else 1
 
-		value = self._get_int_val(value)
+		value = parse_int(value)
 
 		for r in involved_registers:
 			for i in range(l):
@@ -673,7 +683,6 @@ class LEDs():
 		fps = int(fps)
 		if fps < 1: fps = 1
 		self.fps = fps
-		self.frame_duration = self._get_frame_duration(fps)
 		self.logger.info("set_fps() Changed animation speed: fps:%d (%s s/frame)" % (self.fps, self.frame_duration))
 		return fps
 
@@ -1032,25 +1041,18 @@ class LEDs():
 			return "OK setting {} -> {}".format(setting, val)
 
 	def set_brightness(self, bright):
-		self.brightness = self._parse8bit(bright)
+		self.brightness = _parse8bit(bright)
 		return self.brightness
 
 	def set_inside_brightness(self, bright):
-		self.inside_brightness = self._parse8bit(bright)
+		self.inside_brightness = _parse8bit(bright)
 		self.update_required = True
 		return self.inside_brightness
 
 	def set_edge_brightness(self, bright):
-		self.edge_brightness = self._parse8bit(bright)
+		self.edge_brightness = _parse8bit(bright)
 		self.update_required = True
 		return self.edge_brightness
-
-	def _parse8bit(self, val):
-		try:
-			return int(val) & 0xff
-		except ValueError:
-			self.logger.error("Could not parse {} as an 8 bit integer".format(repr(val)))
-			raise
 
 	def _set_color(self, i, color):
 		if isinstance(color, Colors):
@@ -1079,17 +1081,44 @@ class LEDs():
 			# self.logger.info("state: %s | no flush   - ", self.state)
 			pass
 
-	def _get_frame_duration(self, fps):
-		return (1.0 / int(fps)) if int(fps)>0 else 1.0
+def parse_int(value):
+	try:
+		return int(float(value))
+	except ValueError:
+		raise ValueError("Cannot convert value {!r} to int.".format(value))
 
 
-	def _get_int_val(self, value):
-		try:
-			value = int(float(value))
-		except:
-			self.logger.exception("_get_int_val() Cant convert value '%s' to int. Using 0 as value. ", value)
-			return 0
-		return value
+def _mylinspace(start, stop, count):
+	"""A pseudo clone of ``numpy.linspace()``
+	Returns an iterator of evenly spaced points between ``start`` and ``stop``, excluding ``stop``.
+	Their number is ``count``.
 
+	The ``start`` and ``stop`` can be anything as long as they implement __sub__() between each other,
+	and __div__() / __truediv__() with regard to ``count`` (non-null int)
+	``count`` is expected to be an ``int`` type.
 
+	Example:
 
+		>>> list(_mylinspace(1, 4, 2))
+		[1.0, 4.0]
+		>>> list(_mylinspace(1.7, 32, 1))
+		[1.7]
+		>>> list(_mylinspace(8, -2, 10))
+		[8., 7., 6., 5., 4., 3., 2., 1., 0., -1.]
+	"""
+	step = (stop - start) / count
+	i = start
+	for i in range(count):
+		yield i
+		i += step
+
+def _parse8bit(self, val):
+	"""Returns the truncated 32bit representation of an ``int``.
+
+	Example:
+
+	"""
+	try:
+		return int(val) & 0xff
+	except ValueError:
+		raise ValueError("Could not parse {} as an 8 bit integer".format(repr(val)))
