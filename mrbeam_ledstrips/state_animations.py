@@ -98,7 +98,7 @@ COMMANDS = dict(
 	LASER_JOB_CANCELLED        = ['LaserJobCancelled'],
 	LASER_JOB_FAILED           = ['LaserJobFailed'],
 	PNG_ANIMATION              = ['png'],
-	
+
 	LENS_CALIBRATION           = ['lens_calibration'],
 
 	WHITE                      = ['white', 'all_white'],
@@ -114,7 +114,7 @@ COMMANDS = dict(
 	FLASH_BLUE                 = ['flash_blue'],
 	FLASH_YELLOW               = ['flash_yellow'],
 	FLASH_ORANGE               = ['flash_orange'],
-	
+
 	BLINK_WHITE                = ['blink_white'],
 	BLINK_RED                  = ['blink_red'],
 	BLINK_GREEN                = ['blink_green'],
@@ -124,7 +124,8 @@ COMMANDS = dict(
 
 	CUSTOM_COLOR               = ['color'],
 	FLASH_CUSTOM_COLOR         = ['flash_color'],
-	BLINK_CUSTOM_COLOR         = ['blink_color', 'Upload', 'upload'], # yellow blink was the lonng deprected 'upload'
+	# yellow blink was the lonng deprected 'upload'
+	BLINK_CUSTOM_COLOR         = ['blink_color', 'Upload', 'upload'],
 )
 
 """A list of IDs for commands which require arguments"""
@@ -199,13 +200,14 @@ class LEDs():
 		self.brightness = self.config['led_brigthness']
 		self.inside_brightness = 255
 		self.edge_brightness = 255
+		self.frame = 0
 		self._fps = DEFAULT_FPS
 		self.fps = self.config['frames_per_second']
 		self.update_required = False
 		self._last_interior = None
 		self.ignore_next_command = None
 		self.running = False
-		
+
 		self.png_animations = dict()
 
 	def _init_strip(
@@ -289,10 +291,10 @@ class LEDs():
 					analytics.send_log_event(logging.WARNING, "Unknown state: %s", nu_state)
 				return "ERROR {state}   # {old} -> {nu}".format(old=old_state, nu=self.state, state=nu_state)
 
-	def clean_exit(self, signal, msg):
+	def clean_exit(self, signal_code, _):
 		"""Displays a dim red color."""
 		self.static_color(Colors.RED2)
-		self.logger.info("shutting down, signal was: %s", signal)
+		self.logger.info("shutting down, signal was: %s", signal_code)
 		# sys.exit(0)
 
 	def off(self):
@@ -306,8 +308,8 @@ class LEDs():
 		- with 7..45 px: first 7 pixels of each line are used for the corner LEDs, inside LEDs are white
 		- with >= 46 px: first 46 pixels of each line are copied 1:1 to the LED strip:
 		  (right back corner, right front corner, inside, left front corner, left back corner)
-		
-		state is named "png" with parameter "file.png". => mrbeamledstrips_cli png:breathe.png 
+
+		state is named "png" with parameter "file.png". => mrbeamledstrips_cli png:breathe.png
 		files are searched in pre-defined folder (default /usr/share/mrbeamledstrips/png/)
 		"""
 		# as long as cv2 is not absolutely necessary, let's only import it here.
@@ -316,28 +318,27 @@ class LEDs():
 		import cv2
 
 		# check cache
-		if(self.png_animations.get(filename)):
+		if self.png_animations.get(filename):
 			return self.png_animations[filename]
-		
+
 		# load png
 		path_to_png = os.path.join(self.config['png_folder'], filename)
-		
+
 		# check if exists, is_readable, file_size
-		if os.path.isfile(path_to_png) and os.path.getsize(path_to_png) < self.config['max_png_size']: 
+		if os.path.isfile(path_to_png) and os.path.getsize(path_to_png) < self.config['max_png_size']:
 			self.logger.info("loading png animation {}".format(filename))
 			img_4channel = cv2.imread(path_to_png, cv2.IMREAD_UNCHANGED)
-			height, width, channels = img_4channel.shape
-			
+			width = img_4channel.shape[1]
+
 			# check size
 			corner_leds = len(LEDS_RIGHT_BACK)
-			if(width < corner_leds):
+			if width < corner_leds:
 				self.logger.error("png dimension too small. Should have a minimum width of {} px. aborting... ".format(corner_leds))
 				return None # abort if img is too small.
 			# init animation array
 			bgr = img_4channel[:,:,:3]
 			animation = []
 			flat_all_leds = list(flatten(ALL_LEDS))
-			print(flat_all_leds)
 			for row in bgr:
 				line = [None] * TOTAL_LEDS
 
@@ -375,7 +376,7 @@ class LEDs():
 		frames = len(animation)
 		flat_all_leds = [led_id for strip in ALL_LEDS for led_id in strip]
 		# Each row of the animation table is a single frame
-		if(animation != None):
+		if animation is not None:
 			# Choose which row to use
 			row = int(round(frame / state_length)) % frames
 			# apply the colors from that row
@@ -435,8 +436,6 @@ class LEDs():
 		It is also possible to use a list of colors for ``color``.
 		In that case, it changes between these colors between each "breath"
 		"""
-		l = len(LEDS_RIGHT_BACK)
-
 		f_count = state_length * self.fps
 		dim = LEDs._breath_factor(frame, f_count, state_length)
 
@@ -561,7 +560,7 @@ class LEDs():
 					# FIXME : brightness is negative, this will give the "dimmed color" full brightness.
 					brightness = 1 - (f - 2*l)/self.fps * 1.0
 					col = dim_color(Colors.GREEN, brightness)
-					self._set_color(r[i], col)
+					self._set_color(led_id, col)
 
 		self._update()
 
@@ -590,10 +589,6 @@ class LEDs():
 
 		self._update()
 
-	def shutdown(self, frame):
-		"""Turns the outside LEDs red"""
-		self.static_color(Colors.RED)
-
 	def shutdown_prepare(self, frame, duration_seconds=5):
 		"""Makes the LEDs blink red.
 		Dims the red color proggressively for ``duration_seconds``, then blinks bright red
@@ -604,7 +599,7 @@ class LEDs():
 		on = frame % 10 > 3
 		brightness = None
 		if on:
-			if (frame <= peak_frame):
+			if frame <= peak_frame:
 				brightness = int(brightness_start_val * (1 - frame/peak_frame))
 				brightness = max(brightness, 0)
 				myColor = dim_color(Colors.RED, brightness)
@@ -633,11 +628,11 @@ class LEDs():
 		:param color: apply this color to the outside LEDs
 		:param color_inside: Apply this color to the interior LEDs
 		"""
-		if(color != None):
+		if color is not None:
 			for led_strip in OUTSIDE_LEDS:
 				for led_id in led_strip:
 					self._set_color(led_id, color)
-		if(color_inside != None):
+		if color_inside is not None:
 			for led_id in LEDS_INSIDE:
 				self._set_color(led_id, color_inside)
 		self._update()
@@ -671,7 +666,7 @@ class LEDs():
 					spread_spectrum_channel_width=channel_width,
 					spread_spectrum_hopping_delay_ms=hopping_delay)
 				return status
-			except:
+			except Exception:
 				self.logger.exception("spread_spectrum() Exception while executing command %s", self.state)
 		else:
 			self.logger.info("spread_spectrum() invalid command or params. Usage: spread_spectrum:<on|off>:<center_frequency>:<bandwidth>:<channel_width>:<hopping_delay> eg: 'spread_spectrum:on:800000:180000:9000:1'")
@@ -695,7 +690,7 @@ class LEDs():
 			self.state = DEFAULT_STATE
 			self.logger.warning("Rollback: no history, fallback to %s", self.state)
 		self.logger.info("Rollback from '%s' to '%s'", prev_state, self.state)
-			
+
 	def rollback_after_frames(self, frame, max_frames=0, steps=1):
 		"""Automatically perform the rollback after a certain number ``max_frames`` of frames
 		Useful if you want to make a temporary LED animation.
@@ -765,7 +760,7 @@ class LEDs():
 		elif command in COMMANDS['SHUTDOWN_PREPARE']:
 			self.shutdown_prepare(self.frame)
 		elif command in COMMANDS['SHUTDOWN']:
-			self.shutdown(self.frame)
+			self.static_color(Colors.RED)
 		elif command in COMMANDS['SHUTDOWN_PREPARE_CANCEL']:
 			self.rollback(2)
 
@@ -928,17 +923,12 @@ class LEDs():
 			self.rollback_after_frames(self.frame, args.pop(0) if len(args) > 0 else 0)
 		elif command in COMMANDS['BLINK_CUSTOM_COLOR']:
 			my_color = Colors.YELLOW
-			try:
-				r = int(args.pop(0))
-				g = int(args.pop(0))
-				b = int(args.pop(0))
-				my_color = Color(r, g, b)
-			except:
-				pass
-			state_length = int(args.pop(0)) if len(args) > 0 else 8
+			r, g, b = (int(arg) for arg in args[:3])
+			my_color = Color(r, g, b)
+			state_length = int(args[3]) if len(args) > 3 else 8
 			self.blink(self.frame, color=my_color, state_length=state_length)
-			self.rollback_after_frames(self.frame, args.pop(0) if len(args) > 0 else 0)
-
+			if len(args) > 4:
+				self.rollback_after_frames(self.frame, args[4])
 
 		# stuff
 		elif command in COMMANDS['IGNORE_NEXT_COMMAND']:
@@ -1025,12 +1015,12 @@ class LEDs():
 		if isinstance(color, Colors):
 		    color = color.value
 		c = self.strip.getPixelColor(i)
-		if(i in LEDS_INSIDE):
+		if i in LEDS_INSIDE:
 			color = dim_color(color, self.inside_brightness/255.0)
 			#self.logger.info('change_inside_brightness: %i, %i', i, color)
 		else:
 			color = dim_color(color, self.edge_brightness/255.0)
-		if(c != color):
+		if c != color:
 			self.strip.setPixelColor(i, color)
 			self.update_required = True
 			# self.logger.info("colors did not match update %i : %i" % (color,c))
@@ -1039,7 +1029,7 @@ class LEDs():
 			pass
 
 	def _update(self):
-		if(self.update_required):
+		if self.update_required:
 			self.strip.setBrightness(self.brightness)
 			self.strip.show()
 			self.update_required = False
@@ -1049,10 +1039,18 @@ class LEDs():
 			pass
 
 def parse_int(value):
+	"""Tries to convert input to an ``int``, icluding 'pseudo' floats
+
+	Example:
+	    >>> parse_int("1.4")
+	    1
+	    >>> parse_int("1")
+	    1
+	"""
 	try:
 		return int(float(value))
-	except ValueError:
-		raise ValueError("Cannot convert value {!r} to int.".format(value))
+	except ValueError as err:
+		raise ValueError("Cannot convert value {!r} to int.".format(value)) from err
 
 
 def _mylinspace(start, stop, count):
@@ -1079,16 +1077,22 @@ def _mylinspace(start, stop, count):
 		yield i
 		i += step
 
-def _parse8bit(self, val):
+def _parse8bit(val):
 	"""Returns the truncated 32bit representation of an ``int``.
 
 	Example:
+	    >>> _parse8bit(255)
+	    255
+	    >>> _parse8bit(0xff)
+	    255
+	    >>> _parse8bit("255")
+	    255
 
 	"""
 	try:
 		return int(val) & 0xff
-	except ValueError:
-		raise ValueError("Could not parse {} as an 8 bit integer".format(repr(val)))
+	except ValueError as err:
+		raise ValueError("Could not parse {} as an 8 bit integer".format(repr(val))) from err
 
 def dim_color(color, brightness):
 	'''

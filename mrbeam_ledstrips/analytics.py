@@ -174,7 +174,7 @@ def _exec_as_user(cmd_list, user_name):
 	env[ 'PWD'      ]  = cwd
 	env[ 'USER'     ]  = user_name
 	process = subprocess.Popen(cmd_list, preexec_fn=_demote(user_uid, user_gid), cwd=cwd, env=env, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-	stdout, stderr = process.communicate()
+	stdout, _ = process.communicate()
 	returncode = process.returncode
 
 	if returncode != 0:

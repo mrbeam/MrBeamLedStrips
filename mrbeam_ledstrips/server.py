@@ -59,12 +59,11 @@ def get_config(path):
         max_png_size = 30 * 1024
     )
 
-    import os
     if os.path.exists(path):
         try:
             with open(path, "r") as f:
                 file_config = yaml.safe_load(f)
-        except:
+        except Exception:
             logging.get_logger(__name__).warning("error loading config file")
             return default_config
         else:
@@ -128,7 +127,6 @@ class Server(object):
 	def _socket_monitor(self, server_address, callback):
 
 		import socket
-		import os
 		try:
 			os.unlink(server_address)
 		except OSError:
@@ -146,8 +144,8 @@ class Server(object):
 		try:
 			while True:
 				self.logger.info('Waiting for connection on socket...')
-				connection, client_address = sock.accept()
-				self.logger.info('Client connected...')
+				connection, _ = sock.accept()
+				self.logger.debug('Client connected...')
 
 				# with self.mutex:
 				try:
@@ -201,7 +199,6 @@ class Server(object):
 
 	def parse_socket_msg(self, command):
 		"""Parse the message from the socket and run the appropriate API calls."""
-		response = "ERRROR"
 		if command in ('info', '?'):
 			info = self.get_info()
 			self.logger.info(info)
@@ -210,10 +207,9 @@ class Server(object):
 			available_settings = list(chain(SETTINGS.values()))
 			_split = command.split(":")
 			if len(_split) <= 2:
-				return "ERROR : Need to specifiy set:SETTING:VAL where SETTING is \{{}\}".format(",".join(available_settings))
+				return "ERROR : Need to specifiy set:SETTING:VAL where SETTING is {!r}".format(",".join(available_settings))
 			elif _split[1] not in available_settings:
-				return "ERROR, {} not in available settings \\{{}\\}".format(_split[1], available_settings)
-			setting = _split[1]
+				return "ERROR, {} not in available settings {!r}".format(_split[1], available_settings)
 			return self.leds.set_setting(_split[1], _split[2:])
 		else:
 			return self.leds.change_state(command)
@@ -286,13 +282,10 @@ def server():
 	args = parser.parse_args()
 
 	if args.version:
-		import sys
 		print("Version: %s" % 0.1)
 		sys.exit(0)
 
 	if args.daemon:
-		import os
-		import sys
 		from .daemon import Daemon
 
 		if args.daemon == "stop":
@@ -338,7 +331,6 @@ def server():
 				start_server(config)
 
 		daemon = ServerDaemon(pidfile=args.pid, umask=0o02)
-		name = "Server"
 		daemon.start()
 
 

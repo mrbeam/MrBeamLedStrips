@@ -46,7 +46,7 @@ def client():
 def get_version_string():
 	try:
 		return pkg_resources.get_distribution("mrbeam_ledstrips").version
-	except:
+	except Exception:
 		return '-'
 
 if __name__ == "__main__":
