@@ -7,6 +7,7 @@ from __future__ import division, absolute_import
 
 from collections import deque
 from enum import Enum
+from itertools import chain
 import logging
 import os
 import signal
@@ -35,6 +36,9 @@ LEDS_LEFT_BACK =   list(range(39, 39+7))
 OUTSIDE_LEDS = [LEDS_RIGHT_FRONT, LEDS_LEFT_FRONT, LEDS_RIGHT_BACK, LEDS_LEFT_BACK]
 # order is right -> left
 LEDS_INSIDE =      list(range(14, 14+18))
+ALL_LEDS = list(chain(OUTSIDE_LEDS, [LEDS_INSIDE]))
+
+TOTAL_LEDS = sum(len(strips) for strips in ALL_LEDS)
 
 class Colors(Enum):
 	"""RGB Color in 24-bit values"""
@@ -216,7 +220,7 @@ class LEDs():
 		"""Create or resets the ``self.strip`` element.
 		It manages the communication and actual colors displayed on each physical LED
 		"""
-		self.strip = PixelStrip(self.config['led_count'],
+		self.strip = PixelStrip(TOTAL_LEDS,
 									   self.config['gpio_pin'],
 									   freq_hz=freq_hz,
 									   dma=self.config['led_dma'],
@@ -329,38 +333,37 @@ class LEDs():
 			if(width < corner_leds):
 				self.logger.error("png dimension too small. Should have a minimum width of {} px. aborting... ".format(corner_leds))
 				return None # abort if img is too small.
-			else:
-				# init animation array
-				bgr = img_4channel[:,:,:3]
-				animation = [None]*height
-				for row in range(height):
-					line = [None]*self.config['led_count']
-					
-					if(width < self.config['led_count']): # small png => inside LEDs are white, all corner LEDs equal.
-						self.logger.info("small png => corner LEDs only")
-						for col in range(corner_leds):
-							b,g,r = bgr[row, corner_leds - 1 - col]
-							idx_rb = LEDS_RIGHT_BACK[col]
-							idx_rf = LEDS_RIGHT_FRONT[col]
-							idx_lf = LEDS_LEFT_FRONT[col]
-							idx_lb = LEDS_LEFT_BACK[col]
-							line[idx_rb] = Color(r,g,b) 
-							line[idx_rf] = Color(r,g,b) 
-							line[idx_lf] = Color(r,g,b) 
-							line[idx_lb] = Color(r,g,b) 
-							
-						for idx_in in LEDS_INSIDE:	
-							line[idx_in] = Colors.WHITE # all inside
+			# init animation array
+			bgr = img_4channel[:,:,:3]
+			animation = []
+			flat_all_leds = list(flatten(ALL_LEDS))
+			print(flat_all_leds)
+			for row in bgr:
+				line = [None] * TOTAL_LEDS
 
-					else: # big png => all LEDs are individually controlled
-						for col in range(self.config['led_count']):
-							b,g,r = bgr[row, self.config['led_count'] - 1 - col]
-							line[col] = Color(r,g,b)
-					
-					animation[row] = line
-					
-				self.png_animations[filename] = animation
-				return animation
+				if width < TOTAL_LEDS:
+					# small png => inside LEDs are white
+					# all corner LEDs use the 1st 7 pixels of each row.
+					self.logger.info("small png => corner LEDs only")
+					for i, led_ids in enumerate(zip(*tuple(OUTSIDE_LEDS))):
+						b,g,r = row[i]
+						for led_id in led_ids:
+							idx_led_in_all_leds = flat_all_leds.index(led_id)
+							line[idx_led_in_all_leds] = Color(r, g, b)
+					for led_id in LEDS_INSIDE:
+						idx_led_in_all_leds = flat_all_leds.index(led_id)
+						line[idx_led_in_all_leds] = Colors.WHITE
+
+				else:
+					# big png => all LEDs are individually controlled
+					for i, _ in enumerate(flatten(ALL_LEDS)):
+						b,g,r = row[i]
+						line[i] = Color(r,g,b)
+				animation.append(line)
+
+			# cache the animation in case we use it later
+			self.png_animations[filename] = animation
+			return animation
 		else:
 			self.logger.error("png {} not found or file too large (max {} Byte)".format(path_to_png, self.config['max_png_size']))
 			return None
@@ -370,14 +373,15 @@ class LEDs():
 		When the animation consumes the whole image, it loops back to the 1st row."""
 		animation = self.load_png(png_filename)
 		frames = len(animation)
-		
+		flat_all_leds = [led_id for strip in ALL_LEDS for led_id in strip]
+		# Each row of the animation table is a single frame
 		if(animation != None):
-			# render frame
+			# Choose which row to use
 			row = int(round(frame / state_length)) % frames
-
-			for led in range(self.config['led_count']):
-				color = animation[row][led]
-				self._set_color(led, color)
+			# apply the colors from that row
+			for i, led_id in enumerate(flat_all_leds):
+				color = animation[row][i]
+				self._set_color(led_id, color)
 
 			self._update()
 
@@ -488,9 +492,6 @@ class LEDs():
 
 	def blink(self, frame, color=Colors.YELLOW, state_length=8):
 		"""Light up the top and bottom alternatively. """
-		l = len(LEDS_RIGHT_BACK)
-		fwd_bwd_range = list(range(l)) + list(range(l-1, -1, -1))
-
 		frames = [
 			[1, 1, 1, 0, 0, 0, 0],
 			[0, 0, 0, 0, 1, 1, 1]
@@ -1107,3 +1108,6 @@ def dim_color(color, brightness):
 	g = (color & 0x00FF00) >> 8
 	b = (color & 0x0000FF)
 	return Color(int(r*brightness), int(g*brightness), int(b*brightness))
+
+def flatten(my_list):
+    return chain(*tuple(my_list))

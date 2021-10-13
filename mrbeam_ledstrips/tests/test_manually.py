@@ -81,9 +81,16 @@ class TestCommands(LEDLoopTester):
             sleep(ANIMATION_TIME_IN_SEC)
             assert self.led_thread.is_alive()
 
-    @pytest.mark.datafiles(os.path.join(PNG_DIR, "colordots.png"))
+    # @pytest.mark.datafiles(os.path.join(PNG_DIR, "rainbow.png"))
+    @pytest.mark.datafiles(
+        os.path.join(PNG_DIR, "breathe_orange.png"),
+        os.path.join(PNG_DIR, "colordots_small.png")
+    )
     def test_png(self, datafiles):
         self.leds.config['png_folder'] = str(datafiles)
-        self.leds.change_state(":".join(["png", "colordots.png"]))
-        sleep(3) #ANIMATION_TIME_IN_SEC)
+        # self.leds.change_state(":".join(["png", "rainbow.png"]))
+        self.leds.change_state(":".join(["png", "breathe_orange.png"]))
+        sleep(8) #ANIMATION_TIME_IN_SEC)
+        self.leds.change_state(":".join(["png", "colordots_small.png"]))
+        sleep(8) #ANIMATION_TIME_IN_SEC)
         assert self.led_thread.is_alive()
