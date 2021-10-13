@@ -745,31 +745,32 @@ class LEDs():
 		state_string = data or COMMANDS['OFF'][0]
 		# split params from state string
 		params = state_string.split(':')
-		my_state = params.pop(0)
-		return my_state, params
+		command = params.pop(0)
+		return command, params
 
 
-	def handle(self, state, args):
-		# Do not set the interior LED lights by default
-		interior = None
-		if state in [comm for key in COMMANDS_REQ_ARG for comm in COMMANDS[key]] and not args:
-		    raise ValueError("command {!r} requires arguments.".format(state))
+	def handle(self, command, args):
+		"""
+		Perform 1 frame for a given animation.
+		Uses the ``command`` string from the command line and the following arguments ``args``.
+		"""
+		if command in [comm for key in COMMANDS_REQ_ARG for comm in COMMANDS[key]] and not args:
+		    raise ValueError("command {!r} requires arguments.".format(command))
 
 
 		# Daemon listening
-		if state in COMMANDS['LISTENING'] or state in COMMANDS['UNKNOWN']:
-			interior = None # skip interior
+		if command in COMMANDS['LISTENING'] or command in COMMANDS['UNKNOWN']:
 			self.interior_fade_in(self.frame)
-			self.breathing_static(self.frame, color=Colors.WHITE, dim=0.05)
-		elif state in COMMANDS['LISTENING_NET']:
+			self.breathing_static(self.frame, color=dim_color(Colors.WHITE, 0.05))
+		elif command in COMMANDS['LISTENING_NET']:
 			self.breathing(self.frame, color=Colors.WHITE)
-		elif state in COMMANDS['LISTENING_AP']:
+		elif command in COMMANDS['LISTENING_AP']:
 			self.breathing(self.frame, color=Color(150, 255, 0))
-		elif state in COMMANDS['LISTENING_AP_AND_NET']:
+		elif command in COMMANDS['LISTENING_AP_AND_NET']:
 			self.breathing(self.frame, color=[Color(150, 255, 0), Colors.WHITE])
-		elif state in COMMANDS['LISTENING_FINDMRBEAM']:
+		elif command in COMMANDS['LISTENING_FINDMRBEAM']:
 			self.breathing(self.frame, color=Colors.ORANGE)
-		elif state in COMMANDS['LISTENING_COLOR']:
+		elif command in COMMANDS['LISTENING_COLOR']:
 			color = Color(*(int(a) for a in args[:3]))
 			if len(args) >= 6:
 				bg_color = Color(*(int(a) for a in args[3:6]))
@@ -778,71 +779,71 @@ class LEDs():
 			self.breathing(self.frame, color=color, state_length=2, bg_color=bg_color)
 
 		# test purposes
-		elif state in COMMANDS['ON']:
+		elif command in COMMANDS['ON']:
 			self.all_on()
 
-		elif state in COMMANDS['ROLLBACK']:
+		elif command in COMMANDS['ROLLBACK']:
 			self.rollback(2)
 
 		# Server
-		elif state in COMMANDS['CLIENT_OPENED']:
+		elif command in COMMANDS['CLIENT_OPENED']:
 			self.idle(self.frame)
-		elif state in COMMANDS['CLIENT_CLOSED']:
+		elif command in COMMANDS['CLIENT_CLOSED']:
 			self.breathing(self.frame)
 
 		# Machine
-		elif state in COMMANDS['ERROR']:
+		elif command in COMMANDS['ERROR']:
 			self.error(self.frame)
-		elif state in COMMANDS['SHUTDOWN_PREPARE']:
+		elif command in COMMANDS['SHUTDOWN_PREPARE']:
 			self.shutdown_prepare(self.frame)
-		elif state in COMMANDS['SHUTDOWN']:
+		elif command in COMMANDS['SHUTDOWN']:
 			self.shutdown(self.frame)
-		elif state in COMMANDS['SHUTDOWN_PREPARE_CANCEL']:
+		elif command in COMMANDS['SHUTDOWN_PREPARE_CANCEL']:
 			self.rollback(2)
 
 		# Laser Job
-		elif state in COMMANDS['PRINT_STARTED']:
+		elif command in COMMANDS['PRINT_STARTED']:
 			self.progress(0, self.frame)
-		elif state in COMMANDS['PRINT_DONE']:
+		elif command in COMMANDS['PRINT_DONE']:
 			self.job_progress = 0
 			self.dust_extraction(self.frame)
-		elif state in COMMANDS['PRINT_CANCELLED']:
+		elif command in COMMANDS['PRINT_CANCELLED']:
 			self.job_progress = 0
 			self.dust_extraction(self.frame)
 
-		elif state in COMMANDS['LASER_JOB_DONE']:
+		elif command in COMMANDS['LASER_JOB_DONE']:
 			self.job_progress = 0
 			self.job_finished(self.frame)
-		elif state in COMMANDS['LASER_JOB_CANCELLED']:
+		elif command in COMMANDS['LASER_JOB_CANCELLED']:
 			self.job_progress = 0
 			self.fade_off()
-		elif state in COMMANDS['LASER_JOB_FAILED']:
+		elif command in COMMANDS['LASER_JOB_FAILED']:
 			self.fade_off()
 
-		elif state in COMMANDS['PRINT_PAUSED']:
+		elif command in COMMANDS['PRINT_PAUSED']:
 			self.progress_pause(self.job_progress, self.frame)
-		elif state in COMMANDS['PRINT_PAUSED_TIMEOUT']:
+		elif command in COMMANDS['PRINT_PAUSED_TIMEOUT']:
 			self.progress_pause(self.job_progress, self.frame, False)
-		elif state in COMMANDS['PRINT_PAUSED_TIMEOUT_BLOCK']:
+		elif command in COMMANDS['PRINT_PAUSED_TIMEOUT_BLOCK']:
 			# Only show for 1 second
 			if self.frame > self.fps:
 				self.change_state(COMMANDS['PRINT_PAUSED_TIMEOUT'][0])
 			else:
 				self.progress_pause(self.job_progress, self.frame, False, color_drip=Colors.RED)
-		elif state in COMMANDS['PRINT_RESUMED']:
+		elif command in COMMANDS['PRINT_RESUMED']:
 			self.progress(self.job_progress, self.frame)
-		elif state in COMMANDS['PROGRESS']:
+		elif command in COMMANDS['PROGRESS']:
 			self.job_progress = args.pop(0)
 			self.progress(self.job_progress, self.frame)
-		elif state in COMMANDS['JOB_FINISHED']:
+		elif command in COMMANDS['JOB_FINISHED']:
 			self.job_finished(self.frame)
-		elif state in COMMANDS['PAUSE']:
+		elif command in COMMANDS['PAUSE']:
 			self.progress_pause(self.job_progress, self.frame)
-		elif state in COMMANDS['READY_TO_PRINT']:
+		elif command in COMMANDS['READY_TO_PRINT']:
 			self.flash(self.frame, color=Colors.BLUE, state_length=2)
-		elif state in COMMANDS['READY_TO_PRINT_CANCEL']:
+		elif command in COMMANDS['READY_TO_PRINT_CANCEL']:
 			self.idle(self.frame)
-		elif state in COMMANDS['BUTTON_PRESS_REJECT']:
+		elif command in COMMANDS['BUTTON_PRESS_REJECT']:
 			# Only show for 1 second
 			if self.frame > self.fps:
 				self.rollback()
@@ -850,115 +851,114 @@ class LEDs():
 				self.progress_pause(self.job_progress, self.frame, False, color_drip=Colors.RED)
 
 		# Slicing
-		elif state in COMMANDS['SLICING_STARTED']:
+		elif command in COMMANDS['SLICING_STARTED']:
 			self.progress(0, self.frame, color_done=Colors.BLUE, color_drip=Colors.WHITE, state_length=3)
-		elif state in COMMANDS['SLICING_DONE']:
+		elif command in COMMANDS['SLICING_DONE']:
 			self.progress(100, self.frame, color_done=Colors.BLUE, color_drip=Colors.WHITE, state_length=3)
-		elif state in COMMANDS['SLICING_CANCELLED']:
+		elif command in COMMANDS['SLICING_CANCELLED']:
 			self.idle(self.frame)
-		elif state in COMMANDS['SLICING_FAILED']:
+		elif command in COMMANDS['SLICING_FAILED']:
 			self.fade_off()
-		elif state in COMMANDS['SLICING_PROGRESS']:
+		elif command in COMMANDS['SLICING_PROGRESS']:
 			self.progress(args.pop(0), self.frame, color_done=Colors.BLUE, color_drip=Colors.WHITE, state_length=3)
 
 		# Settings
-		elif state in COMMANDS['SETTINGS_UPDATED']:
+		elif command in COMMANDS['SETTINGS_UPDATED']:
 			if self.frame > 50:
 				self.rollback()
 			else:
 				self.flash(self.frame, color=Colors.WHITE, state_length=1)
 
 		# Lens calibration
-		elif state in COMMANDS['LENS_CALIBRATION']:
+		elif command in COMMANDS['LENS_CALIBRATION']:
 			self.static_color(color=Colors.BLUE, color_inside=Colors.WHITE)
 			self.rollback_after_frames(self.frame, args.pop(0) if len(args) > 0 else 0)
 
 		# other
-		elif state in COMMANDS['PNG_ANIMATION']: # mrbeamledstrips_cli png:test.png
+		elif command in COMMANDS['PNG_ANIMATION']: # mrbeamledstrips_cli png:test.png
 			filename = args.pop(0)
 			self.png(filename, self.frame, state_length=1)
-		elif state in COMMANDS['OFF']:
+		elif command in COMMANDS['OFF']:
 			self.off()
-			interior = Colors.OFF
 
 		# colors
-		elif state in COMMANDS['WHITE']:
+		elif command in COMMANDS['WHITE']:
 			self.static_color(Colors.WHITE)
 			self.rollback_after_frames(self.frame, args.pop(0) if len(args)>0 else 0)
-		elif state in COMMANDS['RED']:
+		elif command in COMMANDS['RED']:
 			self.static_color(Colors.RED)
 			self.rollback_after_frames(self.frame, args.pop(0) if len(args)>0 else 0)
-		elif state in COMMANDS['GREEN']:
+		elif command in COMMANDS['GREEN']:
 			self.static_color(Colors.GREEN)
 			self.rollback_after_frames(self.frame, args.pop(0) if len(args)>0 else 0)
-		elif state in COMMANDS['BLUE']:
+		elif command in COMMANDS['BLUE']:
 			self.static_color(Colors.BLUE)
 			self.rollback_after_frames(self.frame, args.pop(0) if len(args) > 0 else 0)
-		elif state in COMMANDS['YELLOW']:
+		elif command in COMMANDS['YELLOW']:
 			self.static_color(Colors.YELLOW)
 			self.rollback_after_frames(self.frame, args.pop(0) if len(args) > 0 else 0)
-		elif state in COMMANDS['ORANGE']:
+		elif command in COMMANDS['ORANGE']:
 			self.static_color(Colors.ORANGE)
 			self.rollback_after_frames(self.frame, args.pop(0) if len(args) > 0 else 0)
-		elif state in COMMANDS['CUSTOM_COLOR']:
+		elif command in COMMANDS['CUSTOM_COLOR']:
 			r, g, b = (int(args[i]) for i in range(3))
 			self.static_color(Color(r, g, b))
 			self.rollback_after_frames(self.frame, args.pop(0) if len(args)>0 else 0)
 
-		elif state in COMMANDS['FLASH_WHITE']:
+		elif command in COMMANDS['FLASH_WHITE']:
 			state_length = int(args.pop(0)) if len(args) > 0 else 1
 			self.flash(self.frame, color=Colors.WHITE, state_length=state_length)
 			self.rollback_after_frames(self.frame, args.pop(0) if len(args) > 0 else 0)
-		elif state in COMMANDS['FLASH_RED']:
+		elif command in COMMANDS['FLASH_RED']:
 			state_length = int(args.pop(0)) if len(args) > 0 else 1
 			self.flash(self.frame, color=Colors.RED, state_length=state_length)
 			self.rollback_after_frames(self.frame, args.pop(0) if len(args) > 0 else 0)
-		elif state in COMMANDS['FLASH_GREEN']:
+		elif command in COMMANDS['FLASH_GREEN']:
 			state_length = int(args.pop(0)) if len(args) > 0 else 1
 			self.flash(self.frame, color=Colors.GREEN, state_length=state_length)
 			self.rollback_after_frames(self.frame, args.pop(0) if len(args) > 0 else 0)
-		elif state in COMMANDS['FLASH_BLUE']:
+		elif command in COMMANDS['FLASH_BLUE']:
 			state_length = int(args.pop(0)) if len(args) > 0 else 1
 			self.flash(self.frame, color=Colors.BLUE, state_length=state_length)
 			self.rollback_after_frames(self.frame, args.pop(0) if len(args) > 0 else 0)
-		elif state in COMMANDS['FLASH_YELLOW']:
+		elif command in COMMANDS['FLASH_YELLOW']:
 			state_length = int(args.pop(0)) if len(args) > 0 else 1
 			self.flash(self.frame, color=Colors.YELLOW, state_length=state_length)
 			self.rollback_after_frames(self.frame, args.pop(0) if len(args) > 0 else 0)
-		elif state in COMMANDS['FLASH_ORANGE']:
+		elif command in COMMANDS['FLASH_ORANGE']:
 			state_length = int(args.pop(0)) if len(args) > 0 else 1
 			self.flash(self.frame, color=Colors.ORANGE, state_length=state_length)
 			self.rollback_after_frames(self.frame, args.pop(0) if len(args) > 0 else 0)
-		elif state in COMMANDS['FLASH_CUSTOM_COLOR']:
+		elif command in COMMANDS['FLASH_CUSTOM_COLOR']:
 			r, g, b = (int(args[i]) for i in range(3))
 			state_length = int(args[3]) if len(args) > 3 else 1
 			self.flash(self.frame, color=Color(r, g, b), state_length=state_length)
 			self.rollback_after_frames(self.frame, args.pop(0) if len(args) > 0 else 0)
-		elif state in COMMANDS['BLINK_WHITE']:
+		elif command in COMMANDS['BLINK_WHITE']:
 			state_length = int(args.pop(0)) if len(args) > 0 else 8
 			self.blink(self.frame, color=Colors.WHITE, state_length=state_length)
 			self.rollback_after_frames(self.frame, args.pop(0) if len(args) > 0 else 0)
-		elif state in COMMANDS['BLINK_RED']:
+		elif command in COMMANDS['BLINK_RED']:
 			state_length = int(args.pop(0)) if len(args) > 0 else 8
 			self.blink(self.frame, color=Colors.RED, state_length=state_length)
 			self.rollback_after_frames(self.frame, args.pop(0) if len(args) > 0 else 0)
-		elif state in COMMANDS['BLINK_GREEN']:
+		elif command in COMMANDS['BLINK_GREEN']:
 			state_length = int(args.pop(0)) if len(args) > 0 else 8
 			self.blink(self.frame, color=Colors.GREEN, state_length=state_length)
 			self.rollback_after_frames(self.frame, args.pop(0) if len(args) > 0 else 0)
-		elif state in COMMANDS['BLINK_BLUE']:
+		elif command in COMMANDS['BLINK_BLUE']:
 			state_length = int(args.pop(0)) if len(args) > 0 else 8
 			self.blink(self.frame, color=Colors.BLUE, state_length=state_length)
 			self.rollback_after_frames(self.frame, args.pop(0) if len(args) > 0 else 0)
-		elif state in COMMANDS['BLINK_YELLOW']:
+		elif command in COMMANDS['BLINK_YELLOW']:
 			state_length = int(args.pop(0)) if len(args) > 0 else 8
 			self.blink(self.frame, color=Colors.YELLOW, state_length=state_length)
 			self.rollback_after_frames(self.frame, args.pop(0) if len(args) > 0 else 0)
-		elif state in COMMANDS['BLINK_ORANGE']:
+		elif command in COMMANDS['BLINK_ORANGE']:
 			state_length = int(args.pop(0)) if len(args) > 0 else 8
 			self.blink(self.frame, color=Colors.ORANGE, state_length=state_length)
 			self.rollback_after_frames(self.frame, args.pop(0) if len(args) > 0 else 0)
-		elif state in COMMANDS['BLINK_CUSTOM_COLOR']:
+		elif command in COMMANDS['BLINK_CUSTOM_COLOR']:
 			my_color = Colors.YELLOW
 			try:
 				r = int(args.pop(0))
@@ -973,31 +973,27 @@ class LEDs():
 
 
 		# stuff
-		elif state in COMMANDS['IGNORE_NEXT_COMMAND']:
-			self.ignore_next_command = state
+		elif command in COMMANDS['IGNORE_NEXT_COMMAND']:
+			self.ignore_next_command = command
 			self.rollback()
-		elif state in COMMANDS['IGNORE_STOP']:
+		elif command in COMMANDS['IGNORE_STOP']:
 			self.ignore_next_command = None
 			self.rollback()
-		elif state in COMMANDS['DEBUG_STOP']:
+		elif command in COMMANDS['DEBUG_STOP']:
 			sleept_time = float(args.pop(0))
 			self.logger.info('DebugStop: going to sleep for %ss. Thread: %s', sleept_time, threading.current_thread())
 			time.sleep(sleept_time)
 			self.logger.info('DebugStop: Woke up!!!. Thread: %s', threading.current_thread())
 			self.rollback()
 		else:
-			self.logger.warn("Don't know about command: {}".format(state))
+			self.logger.warning("Don't know about command: {}".format(command))
 			self.set_state_unknown()
 			self.idle(self.frame, color=Color(20, 20, 20), state_length=2)
 
-		# set interior at the end
-		if interior is not None:
-			self.set_interior(interior)
-
 		self.frame += 1
-		if self.frame < 0:
-			# int overflow
-			self.frame = 0
+		# handle int overflow
+		self.frame = max(0, self.frame)
+
 		time.sleep(self.frame_duration)
 
 	def loop(self):
@@ -1008,8 +1004,8 @@ class LEDs():
 
 				data = self.state
 
-				my_state, params = self.parse_input(data)
-				self.handle(my_state, params)
+				command, params = self.parse_input(data)
+				self.handle(command, params)
 
 		except KeyboardInterrupt:
 			self.logger.exception("KeyboardInterrupt Exception in animation loop:")
