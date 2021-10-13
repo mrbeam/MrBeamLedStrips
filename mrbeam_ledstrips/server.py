@@ -261,7 +261,7 @@ def get_version_string():
 
 
 def start_server(config):
-	"""Start """
+	"""Start an LED animation server with socket monitoring."""
 	s = Server(config["socket"], config)
 	s.start()
 

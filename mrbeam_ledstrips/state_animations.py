@@ -46,6 +46,7 @@ class Colors(Enum):
 	ORANGE = Color(226, 83, 3)
 	RED2 =   Color(2, 0, 0)
 
+"""Mapping between command IDs and the expected cli flag(s)"""
 COMMANDS = dict(
 	UNKNOWN                    = ['unknown'],
 	DEBUG_STOP                 = ['DebugStop'],
@@ -121,7 +122,7 @@ COMMANDS = dict(
 	BLINK_CUSTOM_COLOR         = ['blink_color', 'Upload', 'upload'], # yellow blink was the lonng deprected 'upload'
 )
 
-"""A list of commands which require arguments"""
+"""A list of IDs for commands which require arguments"""
 COMMANDS_REQ_ARG = (
     "CUSTOM_COLOR",
     "FLASH_CUSTOM_COLOR",
@@ -133,12 +134,14 @@ COMMANDS_REQ_ARG = (
     "DEBUG_STOP",
 )
 
+# TODO use POSIX flags to set the settings (e.g. --fps --brightness etc...)
+"""The mapping between setting IDs and the expected cli flag(s)"""
 SETTINGS = dict(
-	FPS                        = ['fps'],
-	SPREAD_SPECTRUM            = ['spread_spectrum'],
-	BRIGHTNESS                 = ['brightness', 'bright', 'b'],
-	INSIDE_BRIGHTNESS          = ['inside_brightness', 'ib'],
-	EDGE_BRIGHTNESS            = ['edge_brightness', 'eb'],
+	FPS               = ['fps'],
+	SPREAD_SPECTRUM   = ['spread_spectrum'],
+	BRIGHTNESS        = ['brightness', 'bright', 'b'],
+	INSIDE_BRIGHTNESS = ['inside_brightness', 'ib'],
+	EDGE_BRIGHTNESS   = ['edge_brightness', 'eb'],
 )
 
 DEFAULT_STATE = COMMANDS['LISTENING'][0]
@@ -147,10 +150,22 @@ DEFAULT_STATE = COMMANDS['LISTENING'][0]
 MAX_HISTORY = 10
 """The number of previous LED commands to keep track of."""
 
+DEFAULT_FPS = 1.0
+"""Default frames per second for the animations (fluidity)
+NOTE: This is _very_ slow
+"""
+
+
 class LEDs():
+	"""The manager for the LED animations.
+
+	Keeps count of fps, which animation to show, what frame we are at etc...
+	The main animation loop is ``loop()``.
+
+	Older versions of the LED strips in the MrBeamII did not follow the CE norms for EM pollution.
+	Therefore, a software solution was implemented as a spread spectrum feature to spread
+	the EM energy over more frequencies."""
 	lock = threading.Lock()
-
-
 
 	def __init__(self, config):
 		self.config = config
@@ -160,8 +175,9 @@ class LEDs():
 			from . import analytics
 			analytics.hook_into_logger(self.logger)
 
-		print(("LEDs staring up with config: %s" % self.config))
-		self.logger.info("LEDs staring up with config: %s", self.config)
+		msg = "LEDs starting up with config: %s" % self.config
+		print(msg)
+		self.logger.info(msg)
 
 		# Create NeoPixel object with appropriate configuration.
 		self._init_strip(self.config['led_freq_hz'],
@@ -178,6 +194,7 @@ class LEDs():
 		self.brightness = self.config['led_brigthness']
 		self.inside_brightness = 255
 		self.edge_brightness = 255
+		self._fps = DEFAULT_FPS
 		self.fps = self.config['frames_per_second']
 		self.frame_duration = self._get_frame_duration(self.fps)
 		self.update_required = False
@@ -187,11 +204,18 @@ class LEDs():
 		
 		self.png_animations = dict()
 
-	def _init_strip(self, freq_hz, spread_spectrum_enabled,
-					spread_spectrum_random=False,
-					spread_spectrum_bandwidth=None,
-					spread_spectrum_channel_width=None,
-					spread_spectrum_hopping_delay_ms=None):
+	def _init_strip(
+		self,
+		freq_hz,
+		spread_spectrum_enabled,
+		spread_spectrum_random=False,
+		spread_spectrum_bandwidth=None,
+		spread_spectrum_channel_width=None,
+		spread_spectrum_hopping_delay_ms=None
+	):
+		"""Create or resets the ``self.strip`` element.
+		It manages the communication and actual colors displayed on each physical LED
+		"""
 		self.strip = PixelStrip(self.config['led_count'],
 									   self.config['gpio_pin'],
 									   freq_hz=freq_hz,
@@ -212,7 +236,7 @@ class LEDs():
 		self.strip.begin()  # Init the LED-strip
 
 	def stop(self):
-	    """Makes the loop() function return"""
+	    """Breaks the `while` in the loop() function to stop the animations."""
 	    self.running = False
 
 	def change_state(self, nu_state):
@@ -242,9 +266,9 @@ class LEDs():
 				return "ERROR {state}   # {old} -> {nu}".format(old=old_state, nu=self.state, state=nu_state)
 
 	def clean_exit(self, signal, msg):
+		"""Displays a dim red color."""
 		self.static_color(Colors.RED2)
 		self.logger.info("shutting down, signal was: %s", signal)
-		#self.off()
 		# sys.exit(0)
 
 	def off(self):
@@ -322,9 +346,9 @@ class LEDs():
 			self.logger.error("png {} not found or file too large (max {} Byte)".format(path_to_png, self.config['max_png_size']))
 			return None
 
-		
-
 	def png(self, png_filename, frame, state_length=1):
+		"""Scan a png image and apply the colours line by line onto the LEDs.
+		When the animation consumes the whole image, it loops back to the 1st row."""
 		animation = self.load_png(png_filename)
 		frames = len(animation)
 		
@@ -340,6 +364,7 @@ class LEDs():
 
 
 	def fade_off(self, state_length=10/28, follow_state='ClientOpened'):
+		"""Turns the side LEDs off progressively."""
 		involved_registers = [LEDS_RIGHT_FRONT, LEDS_LEFT_FRONT, LEDS_RIGHT_BACK, LEDS_LEFT_BACK]
 		self.logger.info("fade_off()")
 		for b in self._mylinspace(self.brightness/255.0, 0, int(state_length * self.fps) ):
@@ -358,11 +383,12 @@ class LEDs():
 		    yield i
 		    i += step
 
-	# pulsing red from the center
 	def error(self, frame):
+		"""pulsing red from the center"""
 		self.flash(frame, color=Colors.RED, state_length=1)
 
 	def flash(self, frame, color=Colors.RED, state_length=2):
+		"""Does a pulsating animation starting from the center of the side LEDs."""
 		involved_registers = [LEDS_RIGHT_FRONT, LEDS_LEFT_FRONT, LEDS_RIGHT_BACK, LEDS_LEFT_BACK]
 		l = len(LEDS_RIGHT_BACK)
 
@@ -389,6 +415,9 @@ class LEDs():
 		self._update()
 
 	def breathing(self, frame, color=Colors.ORANGE, bg_color=Colors.OFF, state_length=2):
+		"""Fade in and out with a given color on the side LEDs.
+		The bottom of the side LEDs are illuminated with ``color``.
+		The top of the LEDs use the background color ``bg_color``."""
 		involved_registers = [LEDS_RIGHT_FRONT, LEDS_LEFT_FRONT, LEDS_RIGHT_BACK, LEDS_LEFT_BACK]
 		l = len(LEDS_RIGHT_BACK)
 
@@ -432,6 +461,7 @@ class LEDs():
 		self._update()
 
 	def interior_fade_in(self, frame, force=False):
+		"""Progressively turn the interior LEDs white."""
 		state_length = 2
 		f_count = state_length * self.fps
 		interior_color = Colors.WHITE
