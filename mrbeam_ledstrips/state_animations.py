@@ -434,7 +434,7 @@ class LEDs():
 		l = len(LEDS_RIGHT_BACK)
 
 		f_count = state_length * self.fps
-		dim = _breath_factor(frame, f_count, state_length)
+		dim = LEDs._breath_factor(frame, f_count, state_length)
 
 		my_color = color
 		if isinstance(color, list):
@@ -475,7 +475,7 @@ class LEDs():
 			if force and self._last_interior == Colors.WHITE and frame == 0:
 				interior_color = Colors.OFF
 			elif self._last_interior != Colors.WHITE:
-				dim_breath = _breath_factor(frame, f_count, state_length)
+				dim_breath = LEDs._breath_factor(frame, f_count, state_length)
 				if dim_breath < 1.0:
 					interior_color = dim_color(Colors.WHITE, dim_breath)
 		self.set_interior(interior_color, perform_update=False)
@@ -529,7 +529,7 @@ class LEDs():
 	# pauses the progress animation with a pulsing drip
 	def progress_pause(self, value, frame, breathing=True, color_done=Colors.WHITE, color_drip=Colors.BLUE, state_length=1.5):
 		f_count = state_length * self.fps
-		dim = _breath_factor(frame, f_count, state_length) if breathing else 1
+		dim = LEDs._breath_factor(frame, f_count, state_length) if breathing else 1
 
 		self.progress(value, frame, color_done, dim_color(color_drip, dim), state_length)
 
