@@ -1108,7 +1108,7 @@ def _mylinspace(start, stop, count):
 	"""
 	step = (stop - start) / count
 	i = start
-	for i in range(count):
+	for _ in range(count):
 		yield i
 		i += step
 
