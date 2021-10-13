@@ -386,9 +386,9 @@ class LEDs():
 		"""Turns the side LEDs off progressively."""
 		self.logger.info("fade_off()")
 		for b in _mylinspace(self.brightness/255.0, 0, int(state_length * self.fps) ):
-			for r in OUTSIDE_LEDS:
-				for i in range(len(r)):
-					self._set_color(r[i], dim_color(self.strip.getPixelColor(r[i]), b))
+			for strip in OUTSIDE_LEDS:
+				for led_id in strip:
+					self._set_color(led_id, dim_color(self.strip.getPixelColor(led_id), b))
 			self._update()
 			time.sleep(state_length * self.frame_duration)
 		self.change_state(follow_state)
@@ -505,24 +505,23 @@ class LEDs():
 		self._update()
 
 	def progress(self, value, frame, color_done=Colors.WHITE, color_drip=Colors.BLUE, state_length=2):
+		value = parse_int(value)
 		l = len(LEDS_RIGHT_BACK)
 		c = int(round(frame / state_length)) % l
 
-		value = parse_int(value)
-
-		for r in OUTSIDE_LEDS:
-			for i in range(l):
+		for strip in OUTSIDE_LEDS:
+			for i, led_id in enumerate(strip):
 
 				bottom_up_idx = l-i-1
 				threshold = value / 100.0 * (l-1)
 				if threshold < bottom_up_idx:
 					if i == c:
-						self._set_color(r[i], color_drip)
+						_color = color_drip
 					else:
-						self._set_color(r[i], Colors.OFF)
-
+						_color = Colors.OFF
 				else:
-					self._set_color(r[i], color_done)
+					_color = color_done
+				self._set_color(led_id, _color)
 
 		self._update()
 
@@ -536,8 +535,8 @@ class LEDs():
 	def idle(self, frame, color=Colors.WHITE, state_length=1):
 		leds = LEDS_RIGHT_BACK + list(reversed(LEDS_RIGHT_FRONT)) + LEDS_LEFT_FRONT + list(reversed(LEDS_LEFT_BACK))
 		c = int(round(frame / state_length)) % len(leds)
-		for i in range(len(leds)):
-			self._set_color(leds[i], color if i == c else Colors.OFF)
+		for i, led_id in enumerate(leds):
+			self._set_color(led_id, color if i == c else Colors.OFF)
 		self._update()
 
 	def job_finished(self, frame, state_length=1):
@@ -622,10 +621,8 @@ class LEDs():
 		color = dim_color(color, self.inside_brightness/255.0)
 		if self._last_interior != color:
 			self._last_interior = color
-			leds = LEDS_INSIDE
-			l = len(leds)
-			for i in range(l):
-				self._set_color(leds[i], color)
+			for led_id in LEDS_INSIDE:
+				self._set_color(led_id, color)
 			if perform_update:
 				self._update()
 
