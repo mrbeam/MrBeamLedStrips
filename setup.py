@@ -3,6 +3,7 @@
 
 from setuptools import setup, Command
 import sys
+import versioneer
 
 DESCRIPTION = "A daemon for controlling the LEDs of Mr Beam II"
 LONG_DESCRIPTION = """mrbeam_ledstrips is a small Python daemon for reading
