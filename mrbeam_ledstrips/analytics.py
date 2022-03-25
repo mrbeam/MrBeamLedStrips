@@ -150,7 +150,7 @@ def _send_thread():
 
 def _get_version_string():
 	try:
-		from ._version import __version__
+		from mrbeam_ledstrips import __version__
 		return __version__
 	except:
 		pass
