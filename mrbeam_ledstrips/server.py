@@ -2,6 +2,7 @@
 from __future__ import absolute_import
 from __future__ import print_function
 import argparse
+from itertools import chain
 import logging
 import sys
 import threading
@@ -11,7 +12,7 @@ import traceback
 import yaml
 import os
 import pkg_resources
-from .state_animations import LEDs, COMMANDS
+from .state_animations import LEDs, COMMANDS, SETTINGS
 
 SOCK_BUF_SIZE = 4 * 1024
 PY3 = sys.version_info >= (3,0)
@@ -58,12 +59,11 @@ def get_config(path):
         max_png_size = 30 * 1024
     )
 
-    import os
     if os.path.exists(path):
         try:
             with open(path, "r") as f:
                 file_config = yaml.safe_load(f)
-        except:
+        except Exception:
             logging.get_logger(__name__).warning("error loading config file")
             return default_config
         else:
@@ -73,6 +73,16 @@ def get_config(path):
 
 
 class Server(object):
+	"""A server which listens for commands over a socket and changes LED animations accordingly.
+
+	- runs a ``Thread`` which takes care of the LED animations (``LEDs.loop()``)
+	- The main thread monitors messages sent over a socket connection.
+		- Sends relevant commnads through a callback to the ``LEDs`` instance
+
+	TODO Create an API for the ``LEDs`` instance. All the message parsing can be done in this class,
+	     then perform the correct calls accordingly.
+	"""
+
 	def __init__(self, server_address, led_config):
 		self.logger = logging.getLogger(__name__)
 		self.analytics = led_config.get('enable_analytics', True)
@@ -117,7 +127,6 @@ class Server(object):
 	def _socket_monitor(self, server_address, callback):
 
 		import socket
-		import os
 		try:
 			os.unlink(server_address)
 		except OSError:
@@ -135,8 +144,8 @@ class Server(object):
 		try:
 			while True:
 				self.logger.info('Waiting for connection on socket...')
-				connection, client_address = sock.accept()
-				self.logger.info('Client connected...')
+				connection, _ = sock.accept()
+				self.logger.debug('Client connected...')
 
 				# with self.mutex:
 				try:
@@ -172,10 +181,9 @@ class Server(object):
 						connection.sendall(str("ERROR : error while processing message from client") + '\x00')
 					except:
 						pass
-		except (KeyboardInterrupt, SystemExit):
-			pass
-		except Exception:
-			self.logger.exception("Exception in socket monitor: ")
+		except Exception as e:
+			self.logger.exception("Exception in socket monitor: %s", e)
+			raise
 		finally:
 			sock.close()
 			os.unlink(server_address)
@@ -187,19 +195,27 @@ class Server(object):
 		self.animation.daemon = True
 		self.animation.name = "StateAnimations"
 		self.animation.start()
-		self._socket_monitor(self.server_address, callback=self.on_state_change)
+		self._socket_monitor(self.server_address, callback=self.parse_socket_msg)
 
-	def on_state_change(self, state):
-		response = "ERRROR"
-		if (state in ('info', '?')):
+	def parse_socket_msg(self, command):
+		"""Parse the message from the socket and run the appropriate API calls."""
+		if command in ('info', '?'):
 			info = self.get_info()
 			self.logger.info(info)
-			response = info
+			return info
+		elif command.startswith("set:"):
+			available_settings = list(chain(SETTINGS.values()))
+			_split = command.split(":")
+			if len(_split) <= 2:
+				return "ERROR : Need to specifiy set:SETTING:VAL where SETTING is {!r}".format(",".join(available_settings))
+			elif _split[1] not in available_settings:
+				return "ERROR, {} not in available settings {!r}".format(_split[1], available_settings)
+			return self.leds.set_setting(_split[1], _split[2:])
 		else:
-			response = self.leds.change_state(state)
-		return response
+			return self.leds.change_state(command)
 
 	def get_info(self):
+		"""Returns basic insight into the attributes of the ``LEDs`` instance for debugging reasons."""
 		info = ["INFO: "]
 
 		info.append("version: {}".format(get_version_string()))
@@ -231,6 +247,9 @@ class Server(object):
 
 
 def get_version_string():
+	"""Return the version string as the pip tool sees it.
+
+	See pkg_resources.get_distribution().version"""
 	try:
 		return pkg_resources.get_distribution("mrbeam_ledstrips").version
 	except:
@@ -238,11 +257,14 @@ def get_version_string():
 
 
 def start_server(config):
+	"""Start an LED animation server with socket monitoring."""
 	s = Server(config["socket"], config)
 	s.start()
 
 
 def server():
+	"""Main entry point when running ``mrbeam_ledstrips`` from the cli."""
+
 	parser = argparse.ArgumentParser(parents=[])
 
 	parser.add_argument("-c", "--config", default="/etc/mrbeam_ledstrips.yaml", help="Config file location")
@@ -260,13 +282,10 @@ def server():
 	args = parser.parse_args()
 
 	if args.version:
-		import sys
 		print("Version: %s" % 0.1)
 		sys.exit(0)
 
 	if args.daemon:
-		import os
-		import sys
 		from .daemon import Daemon
 
 		if args.daemon == "stop":
@@ -293,7 +312,7 @@ def server():
 	                    level=logging.DEBUG if args.debug else logging.INFO)
 	if not args.quiet:
 		console_handler = logging.StreamHandler()
-		console_handler.formatter = logging.Formatter(fmt='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+		console_handler.formatter = logging.Formatter(fmt=logging_format)
 		console_handler.level = logging.DEBUG if args.debug else logging.INFO
 		logging.getLogger('').addHandler(console_handler)
 
@@ -312,7 +331,6 @@ def server():
 				start_server(config)
 
 		daemon = ServerDaemon(pidfile=args.pid, umask=0o02)
-		name = "Server"
 		daemon.start()
 
 

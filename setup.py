@@ -144,9 +144,9 @@ class UninstallExtrasCommand(Command):
 			except Exception as e:
 				print(("Error while removing %s (%s), please remove manually" % (folder, e.message)))
 
-install_requires = ["PyYaml",]
+install_requires = ["PyYaml"]
 if sys.version_info >= (3,0):
-	install_requires += ["rpi-ws281x; platform_machine=='armv7l'",]
+	install_requires += ["rpi-ws281x; platform_machine=='armv7l'", "opencv-python-headless==4.5.3.56"]
 setup(
 	name = "mrbeam_ledstrips",
 	version = '0.2.2',
@@ -164,6 +164,7 @@ setup(
 	zip_safe = False,
 	dependency_links = [],
 	install_requires = install_requires,
+	install_extras = {"develop": ["pytest==4.6.11", "pytest-datafiles==2.0"]},
 	entry_points = {
 		"console_scripts": {
 			"mrbeam_ledstrips = mrbeam_ledstrips:server",
