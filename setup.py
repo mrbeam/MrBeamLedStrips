@@ -72,14 +72,14 @@ class InstallExtrasCommand(Command):
                 else:
                     os.mkdir(folder, mode)
             except Exception as e:
-                print(("Error while creating %s (%s), aborting" % (folder, e.message)))
+                print("Error while creating %s (%s), aborting" % (folder, e.message))
                 sys.exit(-1)
 
         for target, files in EXTRAS_FILES:
             for entry in files:
                 extra_tuple = get_extra_tuple(entry)
                 if extra_tuple is None:
-                    print(("Can't parse entry for target %s, skipping it: %r" % (target, entry)))
+                    print("Can't parse entry for target %s, skipping it: %r" % (target, entry))
                     continue
 
                 path, filename, mode = extra_tuple
@@ -87,17 +87,17 @@ class InstallExtrasCommand(Command):
 
                 path_exists = os.path.exists(target_path)
                 if path_exists and not self.force:
-                    print(("Skipping copying %s to %s as it already exists, use --force to overwrite" % (
-                        path, target_path)))
+                    print("Skipping copying %s to %s as it already exists, use --force to overwrite" % (
+                        path, target_path))
                     continue
 
                 try:
                     shutil.copy(path, target_path)
                     if mode:
                         os.chmod(target_path, mode)
-                        print(("Copied %s to %s and changed mode to %o" % (path, target_path, mode)))
+                        print("Copied %s to %s and changed mode to %o" % (path, target_path, mode))
                     else:
-                        print(("Copied %s to %s" % (path, target_path)))
+                        print("Copied %s to %s" % (path, target_path))
                 except Exception as e:
                     if not path_exists and os.path.exists(target_path):
                         # we'll try to clean up again
@@ -106,7 +106,7 @@ class InstallExtrasCommand(Command):
                         except:
                             pass
 
-                    print(("Error while copying %s to %s (%s), aborting" % (path, target_path, e.message)))
+                    print("Error while copying %s to %s (%s), aborting" % (path, target_path, e.message))
                     sys.exit(-1)
 
 
@@ -128,22 +128,22 @@ class UninstallExtrasCommand(Command):
             for entry in files:
                 extra_tuple = get_extra_tuple(entry)
                 if extra_tuple is None:
-                    print(("Can't parse entry for target %s, skipping it: %r" % (target, entry)))
+                    print("Can't parse entry for target %s, skipping it: %r" % (target, entry))
 
                 path, filename, mode = extra_tuple
                 target_path = os.path.join(target, filename)
                 try:
                     os.remove(target_path)
-                    print(("Removed %s" % target_path))
+                    print("Removed %s" % target_path)
                 except Exception as e:
-                    print(("Error while deleting %s from %s (%s), please remove manually" % (
-                        filename, target, e.message)))
+                    print("Error while deleting %s from %s (%s), please remove manually" % (
+                        filename, target, e.message))
 
         for folder, mode in EXTRAS_FOLDERS[::-1]:
             try:
                 os.rmdir(folder)
             except Exception as e:
-                print(("Error while removing %s (%s), please remove manually" % (folder, e.message)))
+                print("Error while removing %s (%s), please remove manually" % (folder, e.message))
 
 
 def get_cmdclass():
@@ -166,6 +166,7 @@ if sys.version_info >= (3, 0):
     install_requires += ["rpi-ws281x; platform_machine=='armv7l'", ]
 setup(
     name="mrbeam_ledstrips",
+    python_requires='>3.10',
     version=versioneer.get_version(),
     cmdclass=get_cmdclass(),
     description=DESCRIPTION,
