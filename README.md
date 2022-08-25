@@ -16,13 +16,13 @@ Or use the command line interface:
     * `` (no command) Prints version of MrBeamLedStrips. (Does not connect to daemon.)
     * `?` Prints version, list of possible commands and debug information
     * `unknown`
-    * `DebugStop`
+    * `DebugStop`  # breaks -> SW-1733
     * `on`, `all_on`
     * `off`, `all_off`
-    * `brightness`
+    * `brightness` # Error
     * `rollback`
-    * `fps`
-    * `spread_spectrum`
+    * `fps` # Error
+    * `spread_spectrum` # Error
     * `ignore_next_command`
     * `ignore_stop`
     * `Listening`, `_listening`, `listening`
@@ -42,7 +42,7 @@ Or use the command line interface:
     * `PrintPausedTimeoutBlock`
     * `ButtonPressReject`
     * `PrintResumed`
-    * `Progress`, `progress`
+    * `Progress:<progress>`, `progress:<progress>`
     * `JobFinished`, `job_finished`
     * `Pause`, `pause`
     * `ReadyToPrint`
@@ -51,8 +51,8 @@ Or use the command line interface:
     * `SlicingDone`
     * `SlicingCancelled`
     * `SlicingFailed`
-    * `SlicingProgress`, `slicing_progress`
-    * `SettingsUpdated`
+    * `SlicingProgress:<progress>`, `slicing_progress:<progress>`
+    * `SettingsUpdated`  # breaks -> SW-1733
     * `LaserJobDone`
     * `LaserJobCancelled`
     * `LaserJobFailed`
