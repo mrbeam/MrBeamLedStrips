@@ -13,15 +13,9 @@ import sys
 import threading
 import logging
 
-PY3 = sys.version_info >= (3,0)
-if PY3:
-	import rpi_ws281x as ws
-	from rpi_ws281x import Color
-	PixelStrip = ws.PixelStrip
-else:
-	import _rpi_ws281x as ws
-	from neopixel import Color, Adafruit_NeoPixel
-	PixelStrip = Adafruit_NeoPixel
+import rpi_ws281x as ws
+from rpi_ws281x import Color
+PixelStrip = ws.PixelStrip
 
 
 # LED strip configuration:

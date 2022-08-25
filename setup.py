@@ -161,9 +161,8 @@ def get_cmdclass():
     return cmdclass
 
 
-install_requires = ["PyYaml", ]
-if sys.version_info >= (3, 0):
-    install_requires += ["rpi-ws281x; platform_machine=='armv7l'", ]
+install_requires = ["PyYaml", "rpi-ws281x; platform_machine=='armv7l'", ]
+
 setup(
     name="mrbeam_ledstrips",
     python_requires='>3.10',

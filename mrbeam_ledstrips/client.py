@@ -5,7 +5,6 @@ import socket
 import sys
 import pkg_resources
 
-PY3 = sys.version_info >= (3,0)
 CLIENT_TIMEOUT = 5 # in seconds
 
 def client():
@@ -29,15 +28,9 @@ def client():
 
 	try:
 		print("> " + state)
-		if PY3:
-			s.sendall(bytes(state, "utf8"))
-		else:
-			s.send(state+'\x00')
+		s.sendall(bytes(state, "utf8"))
 		data = s.recv(4*1024)
-		if PY3:
-			print("< " + str(data, "utf8"))
-		else:
-			print("< " + data)
+		print("< " + str(data, "utf8"))
 
 	finally:
 		s.close()

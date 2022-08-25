@@ -407,9 +407,7 @@ def run_command(commands, args, cwd=None, verbose=False, hide_stderr=False,
         if verbose:
             print("unable to find command, tried %s" % (commands,))
         return None, None
-    stdout = p.communicate()[0].strip()
-    if sys.version_info[0] >= 3:
-        stdout = stdout.decode()
+    stdout = p.communicate()[0].strip().decode()
     if p.returncode != 0:
         if verbose:
             print("unable to run %s (error)" % dispcmd)
@@ -513,9 +511,7 @@ def run_command(commands, args, cwd=None, verbose=False, hide_stderr=False,
         if verbose:
             print("unable to find command, tried %%s" %% (commands,))
         return None, None
-    stdout = p.communicate()[0].strip()
-    if sys.version_info[0] >= 3:
-        stdout = stdout.decode()
+    stdout = stdout.decode()
     if p.returncode != 0:
         if verbose:
             print("unable to run %%s (error)" %% dispcmd)
@@ -1592,10 +1588,7 @@ def get_cmdclass():
         del cmds["build_py"]
 
     if 'py2exe' in sys.modules:  # py2exe enabled?
-        try:
-            from py2exe.distutils_buildexe import py2exe as _py2exe  # py3
-        except ImportError:
-            from py2exe.build_exe import py2exe as _py2exe  # py2
+        from py2exe.distutils_buildexe import py2exe as _py2exe  # py3
 
         class cmd_py2exe(_py2exe):
             def run(self):
