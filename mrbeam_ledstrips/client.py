@@ -11,7 +11,7 @@ CLIENT_TIMEOUT = 5 # in seconds
 def client():
 
 	if len(sys.argv) <= 1:
-		print(("MrBeam LED Strips v{}".format(get_version_string())))
+		print("MrBeam LED Strips v{}".format(get_version_string()))
 		sys.exit(0)
 
 
@@ -23,21 +23,21 @@ def client():
 	try:
 		s.connect(socket_file)
 	except socket.error as msg:
-		print(("socket error: %s " % msg))
-		print(("Unable to connect to: %s. Daemon running?" % socket_file))
+		print("socket error: %s " % msg)
+		print("Unable to connect to: %s. Daemon running?" % socket_file)
 		sys.exit(1)
 
 	try:
-		print(("> " + state))
+		print("> " + state)
 		if PY3:
 			s.sendall(bytes(state, "utf8"))
 		else:
 			s.send(state+'\x00')
 		data = s.recv(4*1024)
 		if PY3:
-			print(("< " + str(data, "utf8")))
+			print("< " + str(data, "utf8"))
 		else:
-			print(("< " + data))
+			print("< " + data)
 
 	finally:
 		s.close()
