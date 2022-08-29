@@ -14,7 +14,6 @@ import pkg_resources
 from .state_animations import LEDs, COMMANDS
 
 SOCK_BUF_SIZE = 4 * 1024
-PY3 = sys.version_info >= (3,0)
 
 def merge_config(default, config):
     # See octoprint.util.dict_merge
@@ -141,29 +140,14 @@ class Server(object):
 				# with self.mutex:
 				try:
 
-					if PY3:
-						with connection:
-							data = str(connection.recv(SOCK_BUF_SIZE), "utf8").strip()
+					with connection:
+						data = str(connection.recv(SOCK_BUF_SIZE), "utf8").strip()
 
-							self.logger.info('Command: %s' % data)
-							response = str(callback(data))
-
-							self.logger.info('Send: %s' % response)
-							connection.sendall(bytes(response, "utf8"))
-
-					else:
-						buffer = []
-						while True:
-							chunk = connection.recv(16)
-							if chunk:
-								buffer.append(chunk)
-								if chunk.endswith('\x00') or chunk.endswith("\n"):
-									break
-
-						data = ''.join(buffer).strip()[:-1]
 						self.logger.info('Command: %s' % data)
-						response = callback(data)
-						connection.sendall(str(response) + '\x00')
+						response = str(callback(data))
+
+						self.logger.info('Send: %s' % response)
+						connection.sendall(bytes(response, "utf8"))
 
 				except Exception:
 					self.logger.exception('Got an error while processing message from client, aborting')

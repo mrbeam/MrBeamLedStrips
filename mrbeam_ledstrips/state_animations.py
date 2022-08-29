@@ -13,15 +13,9 @@ import sys
 import threading
 import logging
 
-PY3 = sys.version_info >= (3,0)
-if PY3:
-	import rpi_ws281x as ws
-	from rpi_ws281x import Color
-	PixelStrip = ws.PixelStrip
-else:
-	import _rpi_ws281x as ws
-	from neopixel import Color, Adafruit_NeoPixel
-	PixelStrip = Adafruit_NeoPixel
+import rpi_ws281x as ws
+from rpi_ws281x import Color
+PixelStrip = ws.PixelStrip
 
 
 # LED strip configuration:
@@ -156,7 +150,7 @@ class LEDs():
 			from . import analytics
 			analytics.hook_into_logger(self.logger)
 
-		print(("LEDs staring up with config: %s" % self.config))
+		print("LEDs staring up with config: %s" % self.config)
 		self.logger.info("LEDs staring up with config: %s", self.config)
 
 		# Create NeoPixel object with appropriate configuration.
@@ -211,7 +205,7 @@ class LEDs():
 		with self.lock:
 			if self.ignore_next_command:
 				self.ignore_next_command = None
-				print(("state change ignored! keeping: " + str(self.state) + ", ignored: " + str(nu_state)))
+				print("state change ignored! keeping: " + str(self.state) + ", ignored: " + str(nu_state))
 				return "IGNORED {state}   # {old} -> {nu}".format(old=self.state, nu=self.state, state=nu_state)
 
 			# Settings
@@ -227,7 +221,7 @@ class LEDs():
 
 			old_state = self.state
 			if self.state != nu_state:
-				print(("state change " + str(self.state) + " => " + str(nu_state)))
+				print("state change " + str(self.state) + " => " + str(nu_state))
 				self.logger.info("state change " + str(self.state) + " => " + str(nu_state))
 				if self.state != nu_state:
 					self.past_states.append(self.state)
