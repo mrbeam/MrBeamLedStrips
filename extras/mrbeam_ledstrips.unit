@@ -4,7 +4,7 @@ After=socket.target
 
 [Service]
 Type=idle
-ExecStart=/usr/local/bin/mrbeam_ledstrips
+ExecStart=/usr/bin/mrbeam_ledstrips
 PIDFile=/var/run/mrbeam_ledstrips.pid
 
 [Install]
