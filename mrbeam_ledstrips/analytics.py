@@ -12,6 +12,7 @@ import sys
 import types
 import traceback
 from inspect import getframeinfo, stack
+from . import __version__
 
 
 """
@@ -72,7 +73,7 @@ def send_log_event(level, msg, *args, **kwargs):
 	if caller is not None:
 		filename = caller.filename
 		data.update({
-			'hash': hash('{}{}{}'.format(filename, caller.lineno, _get_version_string())),
+			'hash': hash('{}{}{}'.format(filename, caller.lineno, __version__)),
 			'file': filename,
 			'line': caller.lineno,
 			'function': caller.function,
@@ -107,7 +108,7 @@ def _send_analytics(type, data):
 	_logger.debug("Sending analytics data: %s %s", type, data)
 	package = dict(
 		component=COMPONENT_NAME,
-		component_version=_get_version_string(),
+		component_version=___version__,
 		type=type,
 		data=json.dumps(data, sort_keys=False)
 	)
@@ -145,19 +146,6 @@ def _send_thread():
 		return
 	except:
 		_logger.log(logging.ERROR, "Exception in _send_thread() ", exc_info=True)
-
-
-def _get_version_string():
-	try:
-		from mrbeam_ledstrips import __version__
-		return __version__
-	except:
-		pass
-	try:
-		import pkg_resources
-		return pkg_resources.get_distribution(COMPONENT_NAME).version
-	except:
-		return None
 
 
 def _exec_as_user(cmd_list, user_name):
