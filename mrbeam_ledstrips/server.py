@@ -10,7 +10,6 @@ import code
 import traceback
 import yaml
 import os
-import pkg_resources
 from .state_animations import LEDs, COMMANDS
 
 SOCK_BUF_SIZE = 4 * 1024
@@ -216,6 +215,7 @@ class Server(object):
 
 def get_version_string():
 	try:
+		import pkg_resources
 		return pkg_resources.get_distribution("mrbeam_ledstrips").version
 	except:
 		return '-'

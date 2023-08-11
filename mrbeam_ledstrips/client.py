@@ -3,7 +3,6 @@
 
 import socket
 import sys
-import pkg_resources
 
 CLIENT_TIMEOUT = 5 # in seconds
 
@@ -38,6 +37,7 @@ def client():
 
 def get_version_string():
 	try:
+		import pkg_resources
 		return pkg_resources.get_distribution("mrbeam_ledstrips").version
 	except:
 		return '-'

@@ -10,7 +10,6 @@ import os
 import pwd
 import sys
 import types
-import pkg_resources
 import traceback
 from inspect import getframeinfo, stack
 
@@ -155,6 +154,7 @@ def _get_version_string():
 	except:
 		pass
 	try:
+		import pkg_resources
 		return pkg_resources.get_distribution(COMPONENT_NAME).version
 	except:
 		return None
