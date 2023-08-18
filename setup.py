@@ -180,8 +180,8 @@ setup(
     install_requires=install_requires,
     entry_points={
         "console_scripts": {
-            "mrbeam_ledstrips = mrbeam_ledstrips:server",
-            "mrbeam_ledstrips_cli = mrbeam_ledstrips:client"
+            "mrbeam_ledstrips = mrbeam_ledstrips.server:server",
+            "mrbeam_ledstrips_cli = mrbeam_ledstrips.client:client"
         }
     },
 )

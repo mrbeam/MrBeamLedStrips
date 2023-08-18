@@ -3,14 +3,14 @@
 
 import socket
 import sys
-import pkg_resources
+from . import __version__
 
 CLIENT_TIMEOUT = 5 # in seconds
 
 def client():
 
 	if len(sys.argv) <= 1:
-		print("MrBeam LED Strips v{}".format(get_version_string()))
+		print("MrBeam LED Strips v{}".format(__version__))
 		sys.exit(0)
 
 
@@ -34,13 +34,6 @@ def client():
 
 	finally:
 		s.close()
-
-
-def get_version_string():
-	try:
-		return pkg_resources.get_distribution("mrbeam_ledstrips").version
-	except:
-		return '-'
 
 if __name__ == "__main__":
 	client()

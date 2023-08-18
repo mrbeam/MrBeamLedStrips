@@ -10,8 +10,8 @@ import code
 import traceback
 import yaml
 import os
-import pkg_resources
 from .state_animations import LEDs, COMMANDS
+from . import __version__
 
 SOCK_BUF_SIZE = 4 * 1024
 
@@ -166,7 +166,7 @@ class Server(object):
 			self.leds.clean_exit(signal.SIGTERM, None)
 
 	def start(self):
-		self.logger.info("### Starting up ledstrip server v%s...", get_version_string())
+		self.logger.info("### Starting up ledstrip server v%s...", __version__)
 		self.animation = threading.Thread(target=self.leds.loop, kwargs=dict())
 		self.animation.daemon = True
 		self.animation.name = "StateAnimations"
@@ -186,7 +186,7 @@ class Server(object):
 	def get_info(self):
 		info = ["INFO: "]
 
-		info.append("version: {}".format(get_version_string()))
+		info.append("version: {}".format(__version__))
 		info.append(
 			"LEDS: state:{state}, frame:{frame}, fps:{fps}, frame_duration:{frame_duration}, job_progress:{job_progress}, brightness:{brightness}, edge_brightness:{edge_brightness}, inside_brightness:{inside_brightness}".format(
 				state=self.leds.state,
@@ -212,14 +212,6 @@ class Server(object):
 		info.append('')
 
 		return "\n".join(info)
-
-
-def get_version_string():
-	try:
-		return pkg_resources.get_distribution("mrbeam_ledstrips").version
-	except:
-		return '-'
-
 
 def start_server(config):
 	s = Server(config["socket"], config)
