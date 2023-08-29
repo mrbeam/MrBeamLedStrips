@@ -1131,9 +1131,9 @@ class LEDs():
 
 
 	def _get_int_val(self, value):
-		# Implements a last_valid_progress value to avoid wrong progress values
 		try:
 			value = int(float(value))
+			# Implements a last_valid_progress value to avoid wrong progress values
 			self.last_valid_progress=value
 		except:
 			# TODO: This is just a quick fix. It will be handled in SW-3799.
