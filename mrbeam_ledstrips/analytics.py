@@ -108,7 +108,7 @@ def _send_analytics(type, data):
 	_logger.debug("Sending analytics data: %s %s", type, data)
 	package = dict(
 		component=COMPONENT_NAME,
-		component_version=___version__,
+		component_version=__version__,
 		type=type,
 		data=json.dumps(data, sort_keys=False)
 	)
@@ -128,7 +128,7 @@ def _send_thread():
 		while _analytics_queue:
 			package = _analytics_queue.pop(0)
 			retries = len(RETRIES_WAIT_TIMES)
-			cmd = ['/home/pi/oprint/bin/octoprint', 'plugins', 'mrbeam:analytics',
+			cmd = ['/usr/bin/octoprint', 'plugins', 'mrbeam:analytics',
 			       '{}'.format(package['component']),
 			       '{}'.format(package['component_version']),
 			       '{}'.format(package['type']),
