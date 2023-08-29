@@ -173,7 +173,7 @@ class LEDs():
 		self.update_required = False
 		self._last_interior = None
 		self.ignore_next_command = None
-		
+		self.last_valid_progress=0
 		self.png_animations = dict()
 
 	def _init_strip(self, freq_hz, spread_spectrum_enabled,
@@ -1133,9 +1133,12 @@ class LEDs():
 	def _get_int_val(self, value):
 		try:
 			value = int(float(value))
+			# Implements a last_valid_progress value to avoid wrong progress values
+			self.last_valid_progress=value
 		except:
-			self.logger.exception("_get_int_val() Cant convert value '%s' to int. Using 0 as value. ", value)
-			return 0
+			# TODO: This is just a quick fix. It will be handled in SW-3799.
+			self.logger.debug("_get_int_val() Cant convert value '%s' to int. Using 0 as value. ", value)
+			return self.last_valid_progress
 		return value
 
 
